@@ -44,6 +44,7 @@ export const AuthProvider = ({ children }) => {
         },
       });
 
+  
 
       if (response.data.length > 0) {
         const loggedUser = response.data[0];
