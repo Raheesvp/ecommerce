@@ -1,55 +1,26 @@
-// PaymentPage.jsx
 import React, { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../Context/AuthContext";
 import { CartContext } from "../Context/CartContext";
 import { toast } from "react-toastify";
 import { OrderContext } from "../Context/OrderContext";
-import api from "../Api/AxiosInstance";
 
 function PaymentPage() {
   const { user } = useContext(AuthContext);
   const { cart, clearCart } = useContext(CartContext);
-  const { deductStockAfterOrder } = useContext(OrderContext);
+  const { placeFinalOrder, verifyPaymentOnBackend, shippingDetails } = useContext(OrderContext);
+  
   const navigate = useNavigate();
-
-  const shippingaddress = user?.shippingaddress || {};
-
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("razorpay");
   const [isProcessing, setIsProcessing] = useState(false);
 
   const safeCart = cart.map((item) => ({ ...item, quantity: item.quantity || 1 }));
-
   const subtotal = safeCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
 
-  const handleBack = () => window.history.back();
+  const handleBack = () => navigate(-1);
 
-  const saveOrder = async (newOrder) => {
-    try {
-      const previousOrders = user.order && Array.isArray(user.order) ? user.order : [];
-      const response = await api.patch(`/users/${user.id}`, {
-        order: [...previousOrders, newOrder],
-        cart: [],
-      });
-
-      const updatedUser = response.data;
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-
-      if (clearCart) clearCart();
-
-      setIsProcessing(false);
-      navigate("/confirmation", { replace: true, state: { order: newOrder } });
-      toast.success("Order Placed Successfully!");
-    } catch (err) {
-      console.error("Error saving order:", err);
-      setIsProcessing(false);
-      toast.error("Order placed but failed to save in your profile!");
-    }
-  };
-
-  // ******** MAKE ASYNC ********
   const handleCompleteOrder = async () => {
     if (safeCart.length === 0) {
       toast.warn("Your cart is empty!");
@@ -58,85 +29,100 @@ function PaymentPage() {
 
     setIsProcessing(true);
 
-    // ---------- COD ORDER ----------
-    if (selectedPaymentMethod === "cod") {
-      const codOrder = {
-        orderId: Date.now(),
-        paymentMethod: "COD",
-        amount: total.toFixed(2),
-        date: new Date().toISOString(),
-        status: "Pending",
-        shippingAddress: shippingaddress,
-        items: safeCart,
-        summary: {
-          subtotal: subtotal.toFixed(2),
-          tax: tax.toFixed(2),
-          total: total.toFixed(2),
-        },
-      };
+    try {
+      // STEP 1: Create Order
+      // Ensure your context's placeFinalOrder uses shippingDetails internally 
+      // and sends 'TotalPrice' to match the C# DTO.
+      const orderId = await placeFinalOrder(safeCart, total);
 
-      await deductStockAfterOrder(safeCart);
-      saveOrder(codOrder);
-      return;
-    }
-
-    // ---------- RAZORPAY ----------
-    if (selectedPaymentMethod === "razorpay") {
-      if (!window.Razorpay) {
-        toast.error("Razorpay SDK not loaded.");
-        setIsProcessing(false);
-        return;
+      // Validate that we actually got an ID back
+      if (!orderId) {
+        throw new Error("Invalid response from server: No Order ID received.");
       }
 
-      const options = {
-        key: "rzp_test_edrzdb8Gbx5U5M",
-        amount: Math.round(total * 100),
-        currency: "INR",
-        name: "My Shop",
-        description: "Order Payment",
-        prefill: {
-          name: user?.name || "Guest",
-          email: user?.email || "guest@example.com",
-          contact: shippingaddress?.mobileno || "9876543210",
-        },
-        theme: { color: "#dc2626" },
-        magic_checkout:true,
+      // ---------- CASE: COD ----------
+      if (selectedPaymentMethod === "cod") {
+        await verifyPaymentOnBackend({
+          orderId: orderId,
+          transactionId: "COD_ORDER",
+          status: "Success",
+          providerOrderId: "COD_STUB"
+        });
 
-        handler: async function (response) {
-          await deductStockAfterOrder(safeCart);
+        if (clearCart) clearCart();
+        toast.success("Order Placed Successfully!");
+        navigate("/confirmation", { 
+            state: { 
+                order: { orderId, amount: total.toFixed(2), paymentMethod: 'COD', items: safeCart } 
+            } 
+        });
+      }
 
-          const successOrder = {
-            orderId: Date.now(),
-            paymentMethod: "Razorpay",
-            paymentId: response.razorpay_payment_id,
-            amount: total.toFixed(2),
-            date: new Date().toISOString(),
-            status: "SUCCESS",
-            shippingAddress: shippingaddress,
-            items: safeCart,
-            summary: {
-              subtotal: subtotal.toFixed(2),
-              tax: tax.toFixed(2),
-              total: total.toFixed(2),
-            },
-          };
+      // ---------- CASE: RAZORPAY ----------
+      else if (selectedPaymentMethod === "razorpay") {
+        if (!window.Razorpay) {
+          toast.error("Razorpay SDK not loaded.");
+          setIsProcessing(false);
+          return;
+        }
 
-          saveOrder(successOrder);
-        },
+        const options = {
+          key: "rzp_test_S0goOJJ0kMzST1", // REPLACE WITH REAL KEY
+          amount: Math.round(total * 100),
+          currency: "INR",
+          name: "Wolf Athletix",
+          handler: async function (response) {
+            try {
+              // STEP 2: Verify Online Payment
+              await verifyPaymentOnBackend({
+                orderId: orderId,
+                transactionId: response.razorpay_payment_id,
+                status: "Success",
+                providerOrderId: response.razorpay_order_id
+              });
 
-        modal: {
-          ondismiss: () => {
-            setIsProcessing(false);
-            toast.warn("Payment window closed.");
+              if (clearCart) clearCart();
+              toast.success("Payment Successful!");
+              navigate("/confirmation", { 
+                state: { 
+                  order: { 
+                    orderId, 
+                    amount: total.toFixed(2), 
+                    paymentMethod: 'Online', 
+                    paymentId: response.razorpay_payment_id,
+                    items: safeCart
+                  } 
+                } 
+              });
+            } catch (err) {
+              console.error("Verification failed:", err);
+              toast.error("Payment successful but database update failed.");
+            } finally {
+              setIsProcessing(false);
+            }
           },
-        },
-      };
+          prefill: { name: user?.name, email: user?.email },
+          theme: { color: "#dc2626" },
+          modal: { ondismiss: () => setIsProcessing(false) },
+        };
 
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      }
+    } catch (err) {
+      console.error("Order process error:", err);
+      
+      // Detailed error logging to see exactly which field failed validation
+      if (err.response && err.response.data && err.response.data.errors) {
+        console.log("Validation Errors:", err.response.data.errors);
+        toast.error("Validation Error: Please check your shipping address details.");
+      } else {
+        toast.error(err.response?.data?.message || "Failed to process order.");
+      }
+      
+      setIsProcessing(false);
     }
   };
-
   return (
     <>
       <style>{`
@@ -181,15 +167,11 @@ function PaymentPage() {
             </div>
           </div>
 
-          {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-            {/* Payment Section */}
             <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-xl space-y-6">
               <h2 className="text-2xl font-bold text-gray-800">Payment Method</h2>
-              <p className="text-gray-600 border-b pb-4">Select your preferred payment method to complete the order.</p>
+              <p className="text-gray-600 border-b pb-4">Select how you want to pay.</p>
 
-              {/* Razorpay Option */}
               <div className="border border-gray-200 p-4 rounded-lg bg-gray-50">
                 <label className="flex items-center space-x-3 cursor-pointer">
                   <input
@@ -204,7 +186,6 @@ function PaymentPage() {
                 </label>
               </div>
 
-              {/* COD Option */}
               <div className="border border-gray-200 p-4 rounded-lg bg-gray-50">
                 <label className="flex items-center space-x-3 cursor-pointer">
                   <input
@@ -219,7 +200,6 @@ function PaymentPage() {
                 </label>
               </div>
 
-              {/* Buttons */}
               <div className="flex justify-between pt-6">
                 <button
                   onClick={handleBack}
@@ -234,81 +214,36 @@ function PaymentPage() {
                     isProcessing ? "bg-gray-400 text-gray-200 cursor-not-allowed" : "bg-red-600 text-white hover:bg-red-700"
                   }`}
                 >
-                  {isProcessing
-                    ? "Processing..."
-                    : selectedPaymentMethod === "cod"
-                    ? "Place COD Order"
-                    : `Complete Order (₹${total.toFixed(2)})`}
+                  {isProcessing ? "Processing..." : selectedPaymentMethod === "cod" ? "Place COD Order" : `Pay ₹${total.toFixed(2)}`}
                 </button>
               </div>
             </div>
 
-            {/* Order Summary */}
             <div className="lg:col-span-1">
-              <div className="bg-white p-6 rounded-2xl shadow-xl sticky top-8 max-h-[80vh] overflow-y-auto space-y-4">
+              <div className="bg-white p-6 rounded-2xl shadow-xl sticky top-8 space-y-4">
                 <h2 className="text-xl font-bold text-gray-800 mb-4">Order Summary</h2>
-
                 <div className="max-h-56 overflow-y-auto pr-2">
-                  {safeCart.length > 0 ? (
-                    safeCart.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between gap-3 mb-3 border-b border-gray-100 pb-2">
-                        <img
-                          src={item.image || "https://via.placeholder.com/50"}
-                          alt={item.name}
-                          className="w-12 h-12 object-cover rounded-md border border-gray-200"
-                        />
-                        <div className="flex-1 ml-3">
-                          <p className="font-medium text-sm text-gray-800 truncate">{item.name}</p>
-                          <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
-                        </div>
-                        <p className="font-semibold text-gray-800 text-sm">
-                          ₹{(item.price * item.quantity).toFixed(2)}
-                        </p>
+                  {safeCart.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between gap-3 mb-3 border-b border-gray-100 pb-2">
+                      <img src={item.image} alt="" className="w-12 h-12 object-cover rounded-md" />
+                      <div className="flex-1">
+                        <p className="font-medium text-sm text-gray-800 truncate">{item.name}</p>
+                        <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
                       </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-500">No items in your cart.</p>
-                  )}
+                      <p className="font-semibold text-gray-800 text-sm">₹{(item.price * item.quantity).toFixed(2)}</p>
+                    </div>
+                  ))}
                 </div>
-
                 <div className="border-t pt-4 space-y-2 text-sm text-gray-600">
-                  <div className="flex justify-between">
-                    <span>Subtotal</span>
-                    <span>₹{subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Shipping</span>
-                    <span className="text-green-600 font-medium">FREE</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Tax (8%)</span>
-                    <span>₹{tax.toFixed(2)}</span>
-                  </div>
+                  <div className="flex justify-between"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
+                  <div className="flex justify-between"><span>Tax (8%)</span><span>₹{tax.toFixed(2)}</span></div>
                   <div className="flex justify-between font-bold text-xl border-t pt-4 text-gray-900">
-                    <span>Total</span>
-                    <span>₹{total.toFixed(2)}</span>
+                    <span>Total</span><span>₹{total.toFixed(2)}</span>
                   </div>
                 </div>
-
-                {shippingaddress && Object.keys(shippingaddress).length > 0 && (
-                  <div className="mt-4 p-4 bg-gray-100 rounded-lg border border-gray-200">
-                    <h3 className="font-bold text-gray-800 mb-2 border-b pb-1">Ship To</h3>
-                    <p className="text-sm text-black font-bold">
-                      {shippingaddress.firstname} {shippingaddress.lastname}
-                    </p>
-                    <p className="text-sm text-gray-700">
-                      {shippingaddress.address} {shippingaddress.apartment}
-                    </p>
-                    <p className="text-sm text-gray-700">
-                      {shippingaddress.city}, {shippingaddress.state} {shippingaddress.postalcode}
-                    </p>
-                    <p className="text-sm text-gray-700">{shippingaddress.country}</p>
-                  </div>
-                )}
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </>

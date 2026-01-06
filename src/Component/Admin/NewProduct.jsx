@@ -46,7 +46,7 @@ const NewProduct = () => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const files = Array.from(e.dataTransfer.files);
       setProduct({ ...product, images: files });
@@ -123,7 +123,7 @@ const NewProduct = () => {
                 <Package className="w-6 h-6 mr-3 text-blue-600" />
                 Basic Information
               </h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -141,7 +141,7 @@ const NewProduct = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center">
+                  <label className=" text-sm font-medium text-slate-700 mb-2 flex items-center">
                     <DollarSign className="w-4 h-4 mr-1" />
                     Current Price *
                   </label>
@@ -157,7 +157,7 @@ const NewProduct = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center">
+                  <label className=" text-sm font-medium text-slate-700 mb-2 flex items-center">
                     <DollarSign className="w-4 h-4 mr-1 text-slate-400" />
                     Original Price
                   </label>
@@ -172,7 +172,7 @@ const NewProduct = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center">
+                  <label className=" text-sm font-medium text-slate-700 mb-2 flex items-center">
                     <Tag className="w-4 h-4 mr-1" />
                     Category *
                   </label>
@@ -188,7 +188,7 @@ const NewProduct = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center">
+                  <label className=" text-sm font-medium text-slate-700 mb-2 flex items-center">
                     <Archive className="w-4 h-4 mr-1" />
                     Stock Quantity *
                   </label>
@@ -228,7 +228,7 @@ const NewProduct = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center">
+                  <label className="text-sm font-medium text-slate-700 mb-2 flex items-center">
                     <Gift className="w-4 h-4 mr-1" />
                     Special Offer
                   </label>
@@ -252,11 +252,10 @@ const NewProduct = () => {
               </h2>
 
               <div
-                className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
-                  dragActive
+                className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${dragActive
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-slate-300 hover:border-slate-400'
-                }`}
+                  }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}

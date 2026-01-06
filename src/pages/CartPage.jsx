@@ -85,12 +85,12 @@ function CartPage() {
                         <h3 className="font-semibold text-black text-sm">
                           {item.name}
                         </h3>
-                        <p className="text-xs">
+                        {/* <p className="text-xs">
                           {item.size && (
                             <span className="text-black">Size: {item.size}</span>
                           )}
-                          {item.color && <span> {item.size ? " | " : ""}Color: {item.color}</span>}
-                        </p>
+                         
+                        </p> */}
 
                         <div className="flex items-center mt-2">
                           <button

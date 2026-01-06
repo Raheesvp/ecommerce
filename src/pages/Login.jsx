@@ -3,7 +3,7 @@ import React, { useReducer, useState, useContext } from "react";
 import { FaGoogle, FaFacebook } from "react-icons/fa";
 import api from "../Api/AxiosInstance";
 import { AuthContext } from "../Context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
 // REGISTRATION REDUCER
@@ -33,11 +33,7 @@ const initialState = {
   email: "",
   password: "",
   confirmPassword: "",
-  role: "user",
-  cart: [],
-  wishlist: [],
-  order: [],
-  shippingaddress: {},
+
 };
 
 function AuthPage() {
@@ -48,25 +44,44 @@ function AuthPage() {
   const [loginPassword, setLoginPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+
   const { loginuser, loginError } = useContext(AuthContext);
+
   const navigate = useNavigate();
+
+
 
   // Register User
   const registerUser = async (data) => {
-    try {
-      await api.post("/users", data);
-      toast.success("Registration Successful! Redirecting to login...");
-      regDispatch({ type: "RESET_FORM" });
-      setActiveTab("signin");
-    } catch (err) {
-      setRegError(err.response?.data?.message || "Network error during registration.");
+  try {
+    await api.post("/auth/register", data);
+    toast.success("Registration Successful! Redirecting to login...");
+    return { success: true };
+  } catch (err) {
+    console.log(err.response.data);
+    console.error(err);
+
+    if (err.response) {
+      setRegError(
+        err.response.data?.message ||
+        err.response.data?.errors?.Email?.[0] ||
+        err.response.data?.title ||
+        "Registration failed due to invalid input"
+      );
+    } else {
+      setRegError("Unable to reach server");
     }
-  };
+
+    return { success: false };
+  }
+};
+
+
 
   // Handle Registration
   const handleRegistration = async (e) => {
     e.preventDefault();
-    setRegError("");
+   
     setIsLoading(true);
 
     if (regState.password !== regState.confirmPassword) {
@@ -75,47 +90,55 @@ function AuthPage() {
       return;
     }
 
-    try {
-      const checkResponse = await api.get(`/users?email=${regState.email}`);
-      if (checkResponse.data.length > 0) {
-        setRegError("This email already exists! Please use another.");
-        setIsLoading(false);
-        return;
-      } else {
-        await registerUser(regState);
-      }
-    } catch {
-      setRegError("Something went wrong while checking the email.");
-    } finally {
+    if(regState.password.length<6){
+      toast.error("Password Must be at least 6 characters long");
       setIsLoading(false);
+      return ;
     }
+
+
+const registrationData = {
+      FirstName: regState.firstName.trim(),
+      LastName: regState.lastName.trim(),
+      Email: regState.email.trim(),
+      Password: regState.password,
+      ConfirmPassword: regState.confirmPassword,
+    };
+
+    const result = await registerUser(registrationData);
+    
+    if (result.success) {
+      regDispatch({ type: "RESET_FORM" });
+      setActiveTab("signin");
+    }
+    
+    setIsLoading(false);
   };
 
   // Handle Login
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+
+    console.log("Before login result");
+    
     const result = await loginuser(loginEmail, loginPassword);
+
+    console.log("Login result:", result);
+    
     if (result.success) {
-      if(result.redirectTo){
-        navigate(result.redirectTo);
-      }else{
-        navigate("/")
-      }
-      toast.success(`Welcome back, ${result.user.firstName}!`);
-      
-      // Redirect to intended page or home
-      if (result.redirectTo) {
-        navigate(result.redirectTo);
+       const from = location.state?.from?.pathname || "/";
+         console.log("Navigating to:", from);
+      if (result.user.role === "Admin") {
+        navigate("/admin/dashboard",{replace:true});
       } else {
-        navigate("/");
+        navigate(from ,{replace :true});
       }
-    } else {
-      toast.error("Login Failed. Please check your credentials.");
+      console.log("After navigate call");
     }
+    
     setIsLoading(false);
   };
-
   return (
     // ✅ Main container: Full screen height, subtle background
     <div className="flex flex-col lg:flex-row min-h-screen bg-gray-50">

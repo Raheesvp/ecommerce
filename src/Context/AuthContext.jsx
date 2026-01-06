@@ -1,127 +1,88 @@
-import React, { createContext, useState } from "react";
-import axios from "axios";
+
+
+import React, { createContext, useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import api from "../Api/AxiosInstance";
-import { redirect } from "react-router-dom";
+import { authService } from "../Services/AuthService";
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")) || null);
-  const [loginError, setLoginError] = useState("");
-  const [loading, setLoading] = useState(false); // Add loading state
+  // ✅ FIX 1: Initialize user directly from localStorage so it doesn't start as null on refresh
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem("user");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
 
-  // LOGIN function
-  const loginuser = async (loginEmail, loginPassword) => {
-    if (!loginEmail || !loginPassword) {
-      setLoginError("Please fill in both fields");
-      return { success: false };
-    }
+  const [loading, setLoading] = useState(false);
 
-    setLoading(true);
-    setLoginError("");
+  // ✅ FIX 2: Check if user exists. This is now a BOOLEAN, not a function.
+  const isAuthenticated = !!user; 
 
-  // ADMIN LOGIN LOGIC
-  if (loginEmail === "rahees678@gmail.com" && loginPassword === "admin@123") {
-    const adminUser = {
-      firstName: "Admin",
-      lastName: "User",
-      email: loginEmail,
-      role: "admin",
-    };
-
-    setUser(adminUser);
-    localStorage.setItem("user",JSON.stringify(adminUser));
-
-    return {success:true,user:adminUser,redirectTo:"/admin/dashboard"};
-  }
-
-    try {
-      const response = await api.get("/users", {
-        params: {
-          email: loginEmail.trim(),
-          password: loginPassword.trim(),
-        },
-      });
-
-  
-
-      if (response.data.length > 0) {
-        const loggedUser = response.data[0];
-        setUser(loggedUser);
-
-        // FIX: Store the entire user object, not just the ID
-        localStorage.setItem("user", JSON.stringify(loggedUser));
-       
-         return { success: true, user: loggedUser };
-      }else{
-        setLoginError("Invalid Email and Password");
-        return {success:false};
-      }
-    }catch(error){
-      console.error("Login Erorr:",error);
-      setLoginError("Something went wrong");
-      return{success:false}
-    }finally{
-      setLoading(false);
-    }
-  };
-
-  // LOGIN ADMIN function - Fixed to store properly
-  const loginAdmin = async (adminEmail, adminPassword) => {
+  const loginuser = async (email, password) => {
     setLoading(true);
     try {
-      const response = await api.get("/users", {
-        params: {
-          email: adminEmail,
-          password: adminPassword,
-          role: "admin",
-        },
+      const response = await api.post("/Auth/Login", {
+        email: email.trim(),
+        password: password.trim(),
       });
 
-      if (response.data.length > 0) {
-        const adminUser = response.data[0];
-        setUser(adminUser);
-        localStorage.setItem("user", JSON.stringify(adminUser)); // Store full user object
-        toast.success("Admin login successful!");
-        return { success: true, user: adminUser };
+      if (response.data && response.data.data) {
+        const userData = { ...response.data.data, email: email };
+
+        localStorage.setItem("accessToken", userData.accessToken);
+        localStorage.setItem("refreshToken", userData.refreshToken);
+        localStorage.setItem("user", JSON.stringify(userData));
+
+        setUser(userData);
+        toast.success("Login Successful!");
+
+        let redirectTo = "/";
+        if (userData.role?.toLowerCase() === "admin") {
+          redirectTo = "/admin/dashboard";
+        }
+
+        return { success: true, user: userData, redirectTo };
       } else {
-        toast.error("Invalid admin credentials");
+        toast.error("Login failed.");
         return { success: false };
       }
     } catch (error) {
-      console.error("Admin login error:", error);
-      toast.error("Admin login failed");
+      console.error("Login Error:", error);
+      toast.error(error.response?.data?.message || "Login failed");
       return { success: false };
     } finally {
       setLoading(false);
     }
   };
 
-  // LOGOUT function
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-    toast.info("Logged out successfully");
-  };
+  const logout = async() => {
+    try{
+      await authService.logout();
+    }catch(err){
+      console.warn("Server Logout Failed,(Clearnig the local data anyway")
+    }finally{
 
-  // Function to update user data (for order history, profile updates, etc.)
-  const updateUser = (updatedUserData) => {
-    setUser(updatedUserData);
-    localStorage.setItem("user", JSON.stringify(updatedUserData));
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("cart");
+
+      setUser(null);
+      toast.success("Logged Out Successfully");
+    }
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      setUser,
-      loginuser,
-      loginAdmin,
-      loginError,
-      logout,
-      loading,
-      updateUser // Add updateUser function
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        setUser,
+        loginuser,
+        logout,
+        loading,
+        isAuthenticated, // This is now a true/false value
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

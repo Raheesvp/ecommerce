@@ -1,92 +1,92 @@
 import React, { createContext, useState, useContext } from "react";
 import { AuthContext } from "./AuthContext";
 import api from "../Api/AxiosInstance";
+// Import the service object
+import { orderService } from "../Services/OrderService";
 
 export const OrderContext = createContext();
 
 export const OrderProvider = ({ children }) => {
   const { user, setUser } = useContext(AuthContext);
-
+  
   const [shippingDetails, setShippingDetails] = useState(
     user?.shippingaddress || {
-      name: "",
-      address: "",
-      phone: "",
-      city: "",
-      pincode: "",
+      ReceiverName: "",
+      MobileNumber: "",
+      ShippingAddress: "",
+      City: "",
+      State: "",
+      PinNumber: "",
     }
   );
 
-
-
   const [totalAmount, setTotalAmount] = useState(0);
 
-  const deductStockAfterOrder = async (cartItems) => {
-    try {
-      for (const item of cartItems) {
-        // 1. Get latest product details
-        const response = await api.get(`/products/${item.id}`);
-        const product = response.data;
-
-        // 2. Check if stock exists
-        if (product.stock < item.quantity) {
-          console.warn(`Not enough stock for: ${product.name}`);
-          continue;
-        }
-
-        // 3. New stock value
-        const newStock = product.stock - item.quantity;
-
-        // 4. Update stock in backend
-        await api.patch(`/products/${item.id}`, { stock: newStock });
-      }
-
-      console.log("Stock successfully updated after order");
-    } catch (err) {
-      console.error("Error updating stock:", err);
-    }
+  // 1. PLACE ORDER (Using the service)
+// 1. PLACE ORDER
+const placeFinalOrder = async (cartItems, total) => {
+  const orderPayload = {
+    ReceiverName: shippingDetails.ReceiverName || "Default Name",
+    ShippingAddress: shippingDetails.ShippingAddress || "Default Address", // MUST BE > 10 chars
+    City: shippingDetails.City || "Default City",
+    State: shippingDetails.State || "Default State",
+    PinNumber: String(shippingDetails.PinNumber || "000000"),
+    MobileNumber: String(shippingDetails.MobileNumber || "0000000000"),
+    PaymentMethod: "Online", 
+    TotalPrice: total, 
+    OrderItems: cartItems.map((item) => ({
+      productId: item.id,
+      quantity: item.quantity,
+    })),
   };
 
+  try {
+    // Use the orderService correctly
+    const response = await orderService.placeOrder(orderPayload);
+    // Return the integer ID from your ApiResponse
+    return response.data; 
+  } catch (err) {
+    if (err.response && err.response.data.errors) {
+      // This will show you exactly which field failed (e.g., ShippingAddress)
+      console.error("VALIDATION FAILED:", err.response.data.errors);
+      console.error("Place Order Error:", err.response?.data || err.message);
+    }
+    throw err;
+  }
+};
 
-
+// 2. VERIFY PAYMENT
+const verifyPaymentOnBackend = async (verificationData) => {
+  try {
+    // Fixed syntax: ensure parentheses are used for the function call
+    const response = await orderService.verifyPayment(verificationData);
+    return response;
+  } catch (err) {
+    console.error("PAYMENT VERIFICATION FAILED:", err.response?.data || err.message);
+    throw err;
+  }
+};
+  // 3. SAVE SHIPPING DETAILS
   const saveShippingDetails = async (details) => {
-   try {
-
-    const response = await api.patch(`/users/${user.id}`, {
-      shippingaddress: details,
-    });
-
-    const UpdatedUser = response.data;
-  
-
-      // const updatedUser = await res.json();
-
-      setShippingDetails(details);
-      setUser(UpdatedUser);
-      localStorage.setItem("user", JSON.stringify(UpdatedUser));
-    } catch (err) {
-      console.error("Error saving shipping details:", err);
+    setShippingDetails(details);
+    if (user?.id) {
+        try {
+            await api.patch(`/users/${user.id}`, { shippingaddress: details });
+        } catch (err) {
+            console.warn("Could not persist shipping info to user profile.");
+        }
     }
-  };
-
-  const addCartPayment = (paymentId, amount) => {
-    console.log("Cart Payment Success:", { paymentId, amount });
-  };
-
-  const addBuyNowPayment = (paymentId, amount, productId) => {
-    console.log("Buy Now Payment Success:", { paymentId, amount, productId });
   };
 
   return (
     <OrderContext.Provider
       value={{
         shippingDetails,
-        setShippingDetails: saveShippingDetails, 
+        setShippingDetails: saveShippingDetails,
         totalAmount,
         setTotalAmount,
-        addCartPayment,
-        addBuyNowPayment,
-        deductStockAfterOrder
+        placeFinalOrder,
+        verifyPaymentOnBackend,
       }}
     >
       {children}

@@ -14,6 +14,8 @@ function ProductCard({
   const { cart, setCartLength } = useContext(CartContext);
   const navigate = useNavigate();
 
+
+
   // Default actions if not passed via props
   const defaultOnAction = (p) => {
     console.log(`Action on: ${p.name}`);
@@ -24,6 +26,35 @@ function ProductCard({
   const actualOnAddToCart = onAddToCart || defaultOnAction;
   const actualOnAddToWishlist = onAddToWishlist || defaultOnAction;
   const actualIsInWishlist = isInWishlist || defaultIsInWishlist;
+
+
+  console.log("stock ", product.stock);
+
+  console.log(
+  "stock value:", product.stock,
+  "type:", typeof product.stock
+);
+
+
+
+
+  const isOutOfStock = typeof product.stock === "number" && product.stock === 0;
+
+  const getProductImage = (product) => {
+    if (Array.isArray(product.images) && product.images.length > 0) {
+      return product.images[0];
+    }
+    if (product.image) {
+      return product.image;
+    }
+    if (product.imageUrl) {
+      return product.imageUrl;
+    }
+    return "https://via.placeholder.com/300x400";
+  };
+
+
+
 
   // Check if product is already in cart
   const isInCart = cart.some((item) => item.id === product.id);
@@ -45,7 +76,7 @@ function ProductCard({
         onClick={() => navigate(`/products/${product.id}`)}
       >
         <img
-          src={product.image}
+          src={getProductImage(product)}
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
@@ -84,10 +115,13 @@ function ProductCard({
         {/* Product Name */}
         <h3
           className="font-semibold text-gray-900 text-center mt-2 mb-1 text-sm uppercase tracking-wide cursor-pointer hover:text-blue-700 transition-colors line-clamp-2"
-          onClick={() => navigate(`/products/${product.id}`)}
+          onClick={() => navigate(`/product/${product.id}`)}
         >
           {product.name}
         </h3>
+
+    
+
 
         {/* Optional Player or Team */}
         {product.player && (
@@ -119,29 +153,31 @@ function ProductCard({
             e.stopPropagation();
             if (isInCart) {
               navigate("/cartpage");
-            } else {
+            } else if (!isOutOfStock) {
               actualOnAddToCart(product);
             }
           }}
+          disabled={isOutOfStock}
           className={`
-    w-full text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 
-    text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg 
-    disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02]
+    w-full text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2
+    text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg
+    transform hover:scale-[1.02]
 
-    ${product.stock === 0
+    ${isOutOfStock
               ? "bg-gray-400 cursor-not-allowed"
               : isInCart
                 ? "bg-red-600 hover:bg-red-700"
-                : "bg-blue-600 hover:bg-blue-700"}  `}
-          disabled={product.stock === 0}
+                : "bg-blue-600 hover:bg-blue-700"}
+  `}
         >
           <ShoppingCart size={16} />
-          {product.stock === 0
+          {isOutOfStock
             ? "Out of Stock"
             : isInCart
               ? "Go to Cart"
               : "Add to Cart"}
         </button>
+
 
       </div>
     </div>

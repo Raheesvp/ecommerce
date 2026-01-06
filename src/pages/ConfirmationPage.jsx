@@ -1,23 +1,58 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { CheckCircle, ShoppingBag, Truck, Home, ArrowLeft } from "lucide-react";
-import React from "react";
+import React, { useEffect, useState } from "react";
+import api from "../Api/AxiosInstance"; // Ensure this path matches your Axios setup
+import { toast } from "react-toastify";
 
 function ConfirmationPage() {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const order = state?.order;
-
-
+  const { id } = useParams(); // To handle /confirmation/:id if you add it to App.jsx
   
+  const [order, setOrder] = useState(state?.order || null);
+  const [loading, setLoading] = useState(!state?.order && !!id);
+
+  // Persistence: Fetch order from backend if state is lost on refresh
+  useEffect(() => {
+    if (!order && id) {
+      const fetchOrderDetails = async () => {
+        try {
+          const response = await api.get(`/orders/${id}`);
+          // Adjust based on your ApiResponse structure (e.g., response.data.data)
+          setOrder(response.data.data || response.data);
+        } catch (err) {
+          console.error("Error fetching order:", err);
+          toast.error("Could not retrieve order details.");
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchOrderDetails();
+    }
+  }, [id, order]);
+
+  // CALCULATION LOGIC: Calculate based on items to ensure consistency
+  const subtotal = order?.items?.reduce((sum, item) => sum + item.price * item.quantity, 0) || 0;
+  const tax = subtotal * 0.08;
+  const total = subtotal + tax;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
+        <p className="text-xl animate-pulse">Loading order details...</p>
+      </div>
+    );
+  }
+
   if (!order) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
-        <div className="text-center text-white">
+        <div className="text-center text-white p-8">
           <h2 className="text-2xl font-bold mb-4">No Order Found</h2>
           <p className="text-gray-400 mb-6">It seems you arrived here without completing an order.</p>
           <button 
             onClick={() => navigate('/')}
-            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition duration-200"
+            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition"
           >
             Return to Home
           </button>
@@ -61,9 +96,7 @@ function ConfirmationPage() {
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Order Details Section */}
           <div className="lg:col-span-2 space-y-6">
-            
             {/* Success Card */}
             <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
               <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -75,24 +108,18 @@ function ConfirmationPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-600">Order ID</p>
-                  <p className="font-bold text-gray-800">#{order.orderId}</p>
+                  <p className="font-bold text-gray-800">#{order.orderId || order.id}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-600">Total Amount</p>
-                  <p className="font-bold text-green-600">₹{order.amount}</p>
+                  {/* Using the consistent total calculation */}
+                  <p className="font-bold text-green-600">₹{total.toFixed(2)}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-600">Payment Method</p>
-                  <p className="font-bold text-gray-800">{order.paymentMethod}</p>
+                  <p className="font-bold text-gray-800">{order.paymentMethod || "Online"}</p>
                 </div>
               </div>
-
-              {order.paymentId && (
-                <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                  <p className="text-sm text-gray-600">Payment ID</p>
-                  <p className="font-mono text-gray-800">{order.paymentId}</p>
-                </div>
-              )}
             </div>
 
             {/* Ordered Items */}
@@ -101,147 +128,71 @@ function ConfirmationPage() {
                 <ShoppingBag className="w-5 h-5 mr-2 text-red-600" />
                 Ordered Items
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {order.items?.map((item) => (
-                  <div key={item.id} className="flex flex-col items-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div key={item.id} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
                     <img 
                       src={item.image || "https://via.placeholder.com/100"} 
                       alt={item.name} 
-                      className="w-20 h-20 object-cover rounded-lg shadow-sm mb-3"
+                      className="w-16 h-16 object-cover rounded-lg mr-4"
                     />
-                    <p className="text-sm font-medium text-gray-800 text-center mb-1">{item.name}</p>
-                    <p className="text-xs text-gray-600">Qty: {item.quantity}</p>
-                    <p className="text-sm font-bold text-red-600 mt-1">₹{(item.price * item.quantity).toFixed(2)}</p>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-gray-800">{item.name}</p>
+                      <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                      <p className="text-sm font-bold text-red-600">₹{(item.price * item.quantity).toFixed(2)}</p>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
-
-            {/* Shipping Address */}
-            {order.shippingAddress && (
-              <div className="bg-white rounded-2xl shadow-xl p-6">
-                <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                  <Truck className="w-5 h-5 mr-2 text-red-600" />
-                  Shipping Details
-                </h2>
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <p className="font-bold text-gray-800 text-lg mb-2">
-                    {order.shippingAddress.firstname} {order.shippingAddress.lastname}
-                  </p>
-                  <p className="text-gray-700">{order.shippingAddress.address}</p>
-                  {order.shippingAddress.apartment && (
-                    <p className="text-gray-700">{order.shippingAddress.apartment}</p>
-                  )}
-                  <p className="text-gray-700">
-                    {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalcode}
-                  </p>
-                  <p className="text-gray-700">{order.shippingAddress.country}</p>
-                  {order.shippingAddress.mobileno && (
-                    <p className="text-gray-700 mt-2">📱 {order.shippingAddress.mobileno}</p>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Order Summary Sidebar */}
+          {/* Sidebar Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-xl p-6 sticky top-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Order Summary</h2>
+            <div className="bg-white rounded-2xl shadow-xl p-6 sticky top-24">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Summary</h2>
               
-              {/* Price Breakdown */}
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Subtotal</span>
-                  <span className="text-gray-800">₹{order.summary?.subtotal || '0.00'}</span>
+                  <span className="text-gray-800">₹{subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Tax (8%)</span>
+                  <span className="text-gray-800">₹{tax.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Shipping</span>
                   <span className="text-green-600 font-medium">FREE</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Tax</span>
-                  <span className="text-gray-800">₹{order.summary?.tax || '0.00'}</span>
-                </div>
                 <div className="border-t pt-3">
                   <div className="flex justify-between font-bold text-lg">
                     <span className="text-gray-800">Total</span>
-                    <span className="text-red-600">₹{order.amount}</span>
+                    <span className="text-red-600">₹{total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Order Status */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                <div className="flex items-center">
-                  <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
-                  <div>
-                    <p className="font-semibold text-green-800">Order Status</p>
-                    <p className="text-sm text-green-700 capitalize">{order.status || 'Confirmed'}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
               <div className="space-y-3">
                 <button 
                   onClick={() => navigate('/products')}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg font-semibold transition duration-200 flex items-center justify-center"
+                  className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold transition flex items-center justify-center"
                 >
                   <ShoppingBag className="w-4 h-4 mr-2" />
-                  Continue Shopping
+                  Shop More
                 </button>
                 <button 
                   onClick={() => navigate('/')}
-                  className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 py-3 px-4 rounded-lg font-semibold transition duration-200 flex items-center justify-center"
+                  className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 py-3 rounded-lg font-semibold transition flex items-center justify-center"
                 >
                   <Home className="w-4 h-4 mr-2" />
-                  Back to Home
+                  Home
                 </button>
-                <button 
-                  onClick={() => navigate(-1)}
-                  className="w-full text-gray-600 hover:text-gray-800 py-2 text-sm transition duration-200 flex items-center justify-center"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-1" />
-                  Back to Previous
-                </button>
-              </div>
-
-              {/* Support Info */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <p className="text-xs text-gray-600 text-center">
-                  Need help? Contact our support team at{" "}
-                  <a href="mailto:support@wolfathletix.com" className="text-red-600 hover:underline">
-                    support@wolfathletix.com
-                  </a>
-                </p>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Delivery Timeline */}
-        <div className="mt-8 bg-white rounded-2xl shadow-xl p-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Estimated Delivery Timeline</h3>
-          <div className="flex items-center justify-between">
-            {[
-              { status: "Order Placed", date: "Today", active: true },
-              { status: "Processing", date: "Tomorrow", active: false },
-              { status: "Shipped", date: "In 2 days", active: false },
-              { status: "Delivered", date: "In 3-5 days", active: false },
-            ].map((step, index) => (
-              <div key={step.status} className="flex flex-col items-center text-center flex-1">
-                <div className={`w-3 h-3 rounded-full mb-2 ${step.active ? 'bg-red-600' : 'bg-gray-300'}`}></div>
-                <p className={`text-sm font-medium ${step.active ? 'text-red-600' : 'text-gray-500'}`}>
-                  {step.status}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">{step.date}</p>
-                {}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>                            
+      </div>
     </div>
   );
 }
