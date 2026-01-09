@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import { AuthContext } from "../../../Context/AuthContext";
 import { orderService } from "../../../Services/OrderService";
+import { toast } from "react-toastify";
 
 const ProfileOrders = () => {
   const { user } = useContext(AuthContext);
@@ -32,6 +33,28 @@ const ProfileOrders = () => {
       fetchOrders();
     }
   }, [user]);
+
+  const handleCancelOrder  = async (OrderId) =>{
+    if(!window.confirm("Are You Sure You Want To Cancel This Order?"))  return ;
+
+    try{
+      await orderService.cancelOrder(OrderId);
+
+      setOrders((prevOrders)=>
+      prevOrders.map((ord)=>
+      ord.id === OrderId ?  {...ord,status: "Cancelled"} :ord
+       )
+      );
+
+
+        toast.success("Order Cancelled Successfully");
+
+    }catch(err){
+      console.error("Cancel Failed:",err);
+      toast.error(err.response?.data?.message || "Failed  to Cancel Order");  
+  }
+
+  }
 
   if (loading) {
     return (
@@ -73,6 +96,7 @@ const ProfileOrders = () => {
                     })}
                   </p>
                 </div>
+
 
                 <span
                   className={`mt-2 md:mt-0 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
@@ -151,6 +175,24 @@ const ProfileOrders = () => {
                   ₹{order.totalAmount}
                 </span>
               </div>
+              <div className="flex gap-3">
+    {/* Show Cancel button ONLY if order is not Delivered or already Cancelled */}
+    {(order.status === "Pending" || order.status === "Processing") && (
+      <button
+        onClick={() => handleCancelOrder(order.id)}
+        className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-bold hover:bg-red-50 transition-colors"
+      >
+        Cancel Order
+      </button>
+    )}
+    
+    <button 
+       className="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-bold hover:bg-black transition-colors"
+       onClick={() => {/* Navigate to Details if needed */}}
+    >
+      View Details
+    </button>
+  </div>
             </div>
           ))}
         </div>

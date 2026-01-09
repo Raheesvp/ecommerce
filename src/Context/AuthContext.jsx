@@ -2,7 +2,7 @@
 
 import React, { createContext, useState, useEffect } from "react";
 import { toast } from "react-toastify";
-import api from "../Api/AxiosInstance";
+import api, { setRefreshHandler } from "../Api/AxiosInstance";
 import { authService } from "../Services/AuthService";
 
 export const AuthContext = createContext();
@@ -12,9 +12,16 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("user");
     return savedUser ? JSON.parse(savedUser) : null;
+
   });
 
+  useEffect(() => {
+    setRefreshHandler(setIsRefreshing); // Link them here
+  }, []);
+
   const [loading, setLoading] = useState(false);
+
+  const [isRefreshing,setIsRefreshing] = useState(false);
 
   // ✅ FIX 2: Check if user exists. This is now a BOOLEAN, not a function.
   const isAuthenticated = !!user; 
@@ -80,7 +87,8 @@ export const AuthProvider = ({ children }) => {
         loginuser,
         logout,
         loading,
-        isAuthenticated, // This is now a true/false value
+        isAuthenticated, 
+        isRefreshing
       }}
     >
       {children}

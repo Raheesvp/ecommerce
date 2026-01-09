@@ -1,72 +1,89 @@
 import axios from "axios";
 
-// Primary instance for app requests
+// 1. Move these OUTSIDE the interceptor so they persist
+let setIsRefreshingRef = null;
+let isRefreshing = false;
+let failedQueue = [];
+
+// Exported so AuthContext can "plug in" its setter
+export const setRefreshHandler = (handler) => {
+  setIsRefreshingRef = handler;
+};
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) prom.reject(error);
+    else prom.resolve(token);
+  });
+  failedQueue = [];
+};
+
 const api = axios.create({
   baseURL: "https://localhost:57401/api",
-  withCredentials: true, // Required to send/receive session cookies
+  withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });
 
-// Instance specifically for refreshing tokens
 const refreshClient = axios.create({
   baseURL: "https://localhost:57401/api",
-  withCredentials: true, // CRITICAL: Allows browser to send the .AspNetCore.Session cookie
-  headers: { "Content-Type": "application/json" },
+  withCredentials: true,
 });
 
-// Request Interceptor: Attach Access Token (JWT)
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("accessToken");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Handle 401 Unauthorized
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Avoid infinite loops if Login or Refresh themselves fail
-    if (
-      originalRequest.url.includes("/Auth/Login") ||
-      originalRequest.url.includes("/Auth/Refresh-Token")
-    ) {
-      return Promise.reject(error);
-    }
-
-    // Check for 401 and ensure we haven't already tried to retry this request
     if (error.response?.status === 401 && !originalRequest._retry) {
+      
+      // If a refresh is already happening, wait for it
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      } 
+
       originalRequest._retry = true;
+      isRefreshing = true;
+
+      
+      if (setIsRefreshingRef) setIsRefreshingRef(true);
 
       try {
-        // We send an empty body {} because the backend reads the RefreshToken from the Session
-        const res = await refreshClient.post("/Auth/Refresh-Token", {});
-
-        // Extract the new access token from your ApiResponse structure
+        const res = await refreshClient.post("api/Auth/Refresh-Token", {});
         const newAccessToken = res.data.data.accessToken;
-        
-        // Update LocalStorage
-        localStorage.setItem("accessToken", newAccessToken);
 
-        // Update the header and retry the original request
+        localStorage.setItem("accessToken", newAccessToken);
+        processQueue(null, newAccessToken);
+
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(originalRequest);
 
       } catch (refreshError) {
-        // If refresh fails, the session is dead. Clear everything and force login.
-        console.error("Session expired, logging out...");
+        processQueue(refreshError, null);
         localStorage.clear();
+        
         window.location.replace("/login"); 
         return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+        if (setIsRefreshingRef) setIsRefreshingRef(false);
       }
     }
-
     return Promise.reject(error);
   }
 );

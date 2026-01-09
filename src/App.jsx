@@ -12,6 +12,15 @@ import "react-toastify/dist/ReactToastify.css";
 import MainLayout from "./pages/MainLayout";
 import ProfilePage2 from "./pages/Profile/ProfilePage2";
 import OrderDetails from "./pages/Profile/Sections/ProfileOrderDetails";
+import ConfirmationPage from "./pages/ConfirmationPage";
+import ViewProducts from "./Component/Admin2/ViewProducts";
+import ViewOrders from "./Component/Admin2/ViewOrders";
+import AddProduct from "./Component/Admin2/AddProduct";
+import EditProduct from "./Component/Admin2/EditProduct";
+import AdminLayout from "./Component/Admin2/AdminLayout";
+import AdminDashboard from "./Component/Admin2/AdminDashboard";
+import ViewUsers from "./Component/Admin2/ViewUsers";
+import ResetPasswordPage from "./pages/ResetPassword";
 
 
 // Lazy loaded pages
@@ -24,18 +33,14 @@ const Wishlist = lazy(() => import("./pages/WhislistPage"));
 const Shipping = lazy(() => import("./pages/ShippingPage"));
 const Payment = lazy(() => import("./pages/PaymentPage"));
 
-const Confirmation = lazy(() => import("./pages/ConfirmationPage"));
+// const Confirmation = lazy(() => import("./pages/ConfirmationPage"));
 const Profile = lazy(() => import("./pages/Profile/ProfilePage2"));
 const About = lazy(() => import("./pages/AboutPage"));
 const Contact = lazy(() => import("./pages/ContactPage"));
 
 // Admin
-const AdminLogin = lazy(() => import("./Component/Admin/LoginAdmin"));
-const AdminDashboard = lazy(() => import("./Component/Admin/AdminDashboard"));
-const OrderAdmin = lazy(() => import("./Component/Admin/OrderAdmin"));
-const ProductAdmin = lazy(() => import("./Component/Admin/ProductAdmin"));
-const NewProduct = lazy(() => import("./Component/Admin/NewProduct"));
-const ViewUsers = lazy(() => import("./Component/Admin/ViewUsers"));
+
+
 
 function App() {
   const location = useLocation();
@@ -62,7 +67,9 @@ function App() {
                   <Route path="/product/:id" element={<ProductDetails />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/contact" element={<Contact />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage/>}/>
 
+      
                
                   <Route element={<ProtectedRoute />}>
                     <Route path="/cartpage" element={<Cart />} />
@@ -70,7 +77,7 @@ function App() {
                     <Route path="/shipping" element={<Shipping />} />
                     <Route path="/orders" element={<OrderDetails/>}/>
                     <Route path="/payment" element={<Payment />} />
-                    <Route path="/confirmation" element={<Confirmation />} />
+                    <Route path="/confirmation" element={<ConfirmationPage />} />
                     <Route path="/profile" element={<ProfilePage2 />} />
                   </Route>
 
@@ -80,14 +87,19 @@ function App() {
                   {/* 👤 USER PROTECTED ROUTES */}
 
                   {/* 🔐 ADMIN ROUTES */}
-                  <Route path="/admin/login" element={<AdminLogin />} />
-                  <Route element={<ProtectedRoute roles={["admin"]} />}>
-                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                    <Route path="/admin/orderadmin" element={<OrderAdmin />} />
-                    <Route path="/admin/productadmin" element={<ProductAdmin />} />
-                    <Route path="/admin/newproductadmin" element={<NewProduct />} />
-                    <Route path="/admin/users" element={<ViewUsers />} />
-                  </Route>
+             <Route element={<ProtectedRoute roles={["admin"]} />}>
+  <Route path="/admin" element={<AdminLayout />}>
+    {/* Use relative paths (no leading slash) */}
+    <Route index element={<Navigate to="Dashboard" replace />} />
+    <Route path="Dashboard" element={<AdminDashboard />} />
+    <Route path="ViewUsers" element={<ViewUsers />} />
+    <Route path="ViewProducts" element={<ViewProducts />} />
+    <Route path="ViewOrders" element={<ViewOrders />} />
+    <Route path="AddProduct" element={<AddProduct />} />
+    <Route path="EditProduct/:id" element={<EditProduct />} />
+    <Route path="OrderDetails/:id" element={<OrderDetails />} />
+  </Route>
+</Route>
 
 
                   {/* ❌ 404 */}

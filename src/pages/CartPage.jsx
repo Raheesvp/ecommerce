@@ -1,16 +1,46 @@
 // src/Pages/CartPage.jsx
 import React, { useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, Lock } from "lucide-react";
+import { Check, Lock, Trash2 } from "lucide-react";
 import { CartContext } from "../Context/CartContext";
+import Swal from "sweetalert2";
+import { AuthContext } from "../Context/AuthContext";
 
 function CartPage() {
-  const { cart, updateQuantity, removeFromCart } = useContext(CartContext);
+  const { cart, updateQuantity, removeFromCart,setCart,clearCart } = useContext(CartContext);
+
+
 
   const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const estimatedTax = subtotal * 0.08;
   const total = subtotal + estimatedTax;
   const navigate = useNavigate();
+
+const handleClearCart = () => {
+    Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626', 
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, clear it!',
+      background: '#1f2937', // Dark background for your theme
+      color: '#fff'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        await clearCart();
+        Swal.fire({
+          title: 'Cleared!',
+          text: 'Your cart is now empty.',
+          icon: 'success',
+          background: '#1f2937',
+          color: '#fff'
+        });
+      }
+    });
+  };
+
 
   // Hide scrollbar globally
   useEffect(() => {
@@ -70,6 +100,13 @@ function CartPage() {
             <div className="md:col-span-2 bg-white shadow-sm rounded-xl p-5 h-[65vh] overflow-y-auto scrollbar-hide">
               <h2 className="text-xl font-bold mb-4 text-gray-800">Shopping Cart</h2>
               <div className="space-y-3">
+                     <button
+                  onClick={handleClearCart}
+                  className="flex items-center gap-1 text-sm font-medium text-red-600 hover:text-red-800 transition"
+                >
+                  <Trash2 size={16} />
+                  Clear All
+                </button>
                 {cart.map((item) => (
                   <div
                     key={item.id}
@@ -115,6 +152,7 @@ function CartPage() {
                         >
                           Remove
                         </button>
+                   
                       </div>
                     </div>
                     <div className="mt-3 md:mt-0 text-base font-semibold text-gray-800">

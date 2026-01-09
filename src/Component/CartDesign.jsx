@@ -73,7 +73,7 @@ function ProductCard({
           ? "aspect-[3/4] w-full "
           : "h-40 w-40 flex-shrink-0 rounded-lg"
           } bg-gray-50 transition-all duration-300`}
-        onClick={() => navigate(`/products/${product.id}`)}
+        onClick={() => navigate(`/product/${product.id}`)}
       >
         <img
           src={getProductImage(product)}

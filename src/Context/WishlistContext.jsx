@@ -2,12 +2,15 @@ import React, { createContext, useState, useEffect, useContext } from "react";
 import { AuthContext } from "./AuthContext";
 import { wishlistService } from "../Services/WishlistService";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 
 export const WishlistContext = createContext();
 
 export const WishlistProvider = ({ children }) => {
   const { user } = useContext(AuthContext);
   const [wishlist, setWishlist] = useState([]);
+
+  const navigate = useNavigate();
 
 
   const wishlistLength = wishlist.length;
@@ -36,6 +39,7 @@ export const WishlistProvider = ({ children }) => {
   const addToWishlist = async (product) => {
     if (!user) {
       toast.error("Please login to use the wishlist");
+      navigate("/login");
       return;
     }
 

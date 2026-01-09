@@ -16,7 +16,7 @@ function Product() {
   const [totalPages,setTotalPages] = useState(1);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 12;
 
   const { addToWishlist, wishlist = [] } = useContext(WishlistContext);
   const { addToCart } = useContext(CartContext);

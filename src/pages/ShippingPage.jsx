@@ -1,21 +1,18 @@
 import React, { useContext, useReducer, useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import api from "../Api/AxiosInstance";
 import { AuthContext } from "../Context/AuthContext";
 import { CartContext } from "../Context/CartContext";
 import { OrderContext } from "../Context/OrderContext";
 
 const initialState = {
   ReceiverName: "",
-  Mobileno: "",
+  MobileNumber: "", // Updated to match name="MobileNumber"
   ShippingAddress: "",
   City: "",
   State: "",
   PinNumber: "",
-  PaymentMethod :"COD"
-
- 
+  PaymentMethod: "COD"
 };
 
 const reducer = (state, action) => {
@@ -40,30 +37,37 @@ function ShippingPage() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { product, quantity } = location.state || {};
 
-  // Load existing address if user has one saved
+  // Extract either specific "Buy Now" item OR regular checkout data
+  const buyNowItem = location.state?.buyNowItem;
+  
+  // Guard: If no data is present, send user back to cart
+  useEffect(() => {
+    if (!buyNowItem && cart.length === 0) {
+      toast.error("No items found to checkout");
+      navigate("/cart");
+    }
+  }, [buyNowItem, cart, navigate]);
+
+  // Load existing address if user has one saved in profile
   useEffect(() => {
     if (user?.shippingAddress) {
-      dispatch({ type: "LOAD_EXISTING", payload: user.shippingaddress });
+      dispatch({ type: "LOAD_EXISTING", payload: user.shippingAddress });
       setIsSaved(true);
     }
   }, [user]);
 
-  const handleChange = (e) =>{
-    console.log(`Field:${e.target.name} | value :${e.target.value}`)
-    if(isSaved) setIsSaved(false)
+  const handleChange = (e) => {
+    if (isSaved) setIsSaved(false);
     dispatch({
-       type: "UPDATE_FIELD", 
-       field: e.target.name,
-        value: e.target.value
-       });
-      }
+      type: "UPDATE_FIELD",
+      field: e.target.name,
+      value: e.target.value
+    });
+  };
 
-  // 1. Save Address to Backend User Profile
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Saving Shipping Address To Backend",state)
     if (!user) {
       toast.warn("Please log in first");
       navigate("/login");
@@ -71,8 +75,7 @@ function ShippingPage() {
     }
 
     try {
-      // Updates user profile in DB and Global Context via OrderContext helper
-      await setShippingDetails(state); 
+      await setShippingDetails(state);
       toast.success("Shipping Address Saved Successfully");
       setIsSaved(true);
     } catch (err) {
@@ -81,39 +84,45 @@ function ShippingPage() {
     }
   };
 
-  // 2. Prepare Payload and Navigate to Payment
   const handleProceedToPayment = () => {
     if (!isSaved) {
       toast.error("Please save your shipping information before proceeding.");
       return;
     }
 
-    const orderPayload = {
-      // This structure should match your C# 'CreateOrderRequest' DTO
-      orderItems: product 
-        ? [{ productId: product.id, quantity: quantity }] 
-        : cart.map(item => ({ productId: item.id, quantity: item.quantity })),
-      shippingAddress: state, 
-      totalAmount: total
-    };
-
-    navigate("/Payment", { state: orderPayload });
+    // Determine the items for the order payload
+   const orderPayload = {
+    isDirectBuy: !!buyNowItem, // Check if it's a single product buy
+    buyNowItem: buyNowItem,    // THIS contains the name, image, and price
+    shippingAddress: state,    // This is your form data
+    totalAmount: total         // The calculated total
+  };
+  
+    // Navigates to Payment page with the prepared data
+    navigate("/Payment",{
+    state :orderPayload
+    })
+    
+  
   };
 
-  // Calculations
-  const subtotal = product 
-    ? product.price * quantity 
+
+  // Calculations: Use buyNowItem if present, otherwise use Cart
+  const subtotal = buyNowItem 
+    ? buyNowItem.price * buyNowItem.quantity 
     : cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
 
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 pb-10 px-4 pt-18">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 pb-10 px-4 pt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Step Indicator */}
         <div className="flex justify-center mb-8">
-          <div className="flex items-center space-x-4 mt-10">
+          <div className="flex items-center space-x-4">
             {[
               { step: 1, label: "Cart", active: true },
               { step: 2, label: "Shipping", active: true },
@@ -122,16 +131,14 @@ function ShippingPage() {
             ].map((s, index) => (
               <React.Fragment key={s.step}>
                 <div className="flex flex-col items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                      s.active ? "bg-red-600 text-white" : "bg-gray-700 text-gray-400 border border-gray-600"
-                    }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${s.active ? "bg-red-600 text-white" : "bg-gray-700 text-gray-400 border border-gray-600"}`}>
                     {s.step}
                   </div>
                   <span className={`text-xs mt-1 ${s.active ? "text-red-600 font-semibold" : "text-gray-500"}`}>
                     {s.label}
                   </span>
                 </div>
-                {index < 3 && <div className="h-0.5 w-16 bg-gray-700 mt-3" />}
+                {index < 3 && <div className="h-0.5 w-12 sm:w-16 bg-gray-700 mt-3" />}
               </React.Fragment>
             ))}
           </div>
@@ -144,7 +151,7 @@ function ShippingPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <input
                 type="text"
-                name="ReceiverName" // Matches initialState
+                name="ReceiverName"
                 value={state.ReceiverName}
                 onChange={handleChange}
                 placeholder="Receiver Name"
@@ -152,25 +159,22 @@ function ShippingPage() {
                 required
               />
 
-        
-               
-                <input
-                  type="tel"
-                  name="MobileNumber"
-                  value={state.MobileNumber}
-                  onChange={handleChange}
-                  placeholder="Mobile Number"
-                  className="w-full p-3 border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-600"
-                  required
-                />
-          
+              <input
+                type="tel"
+                name="MobileNumber"
+                value={state.MobileNumber}
+                onChange={handleChange}
+                placeholder="Mobile Number"
+                className="w-full p-3 border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-600"
+                required
+              />
 
               <input
                 type="text"
                 name="ShippingAddress"
                 value={state.ShippingAddress}
                 onChange={handleChange}
-                placeholder="Address"
+                placeholder="Full Address"
                 className="w-full p-3 border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-600"
                 required
               />
@@ -183,9 +187,7 @@ function ShippingPage() {
 
               <button
                 type="submit"
-                className={`w-full py-3 rounded-lg font-semibold transition-colors ${
-                  isSaved ? "bg-green-600 text-white cursor-default" : "bg-red-600 text-white hover:bg-red-700"
-                }`}
+                className={`w-full py-3 rounded-lg font-semibold transition-colors ${isSaved ? "bg-green-600 text-white cursor-default" : "bg-red-600 text-white hover:bg-red-700"}`}
               >
                 {isSaved ? "✓ Address Saved" : "Save Shipping Information"}
               </button>
@@ -193,45 +195,53 @@ function ShippingPage() {
           </div>
 
           {/* Right: Order Summary */}
-          <div className="bg-white shadow-md rounded-2xl p-6 flex flex-col justify-between h-full text-gray-800">
-            <h3 className="text-xl font-bold mb-4">Order Summary</h3>
+          <div className="bg-white shadow-md rounded-2xl p-6 flex flex-col justify-between h-fit text-gray-800">
+            <h3 className="text-xl font-bold mb-4 border-b pb-2">Order Summary</h3>
             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-              {product ? (
+              {buyNowItem ? (
+                // Show ONLY the Buy Now product
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <img src={product.image} alt={product.name} className="w-16 h-16 rounded object-cover border" />
+                    <img src={buyNowItem.image} alt={buyNowItem.name} className="w-16 h-16 rounded object-cover border" />
                     <div>
-                      <p className="font-medium">{product.name}</p>
-                      <p className="text-sm text-gray-500">Qty: {quantity}</p>
+                      <p className="font-medium text-sm">{buyNowItem.name}</p>
+                      <p className="text-xs text-gray-500">Qty: {buyNowItem.quantity}</p>
                     </div>
                   </div>
-                  <p className="font-semibold">₹{(product.price * quantity).toFixed(2)}</p>
+                  <p className="font-semibold text-sm">₹{(buyNowItem.price * buyNowItem.quantity).toFixed(2)}</p>
                 </div>
               ) : (
+                // Show standard Cart items
                 cart.map((item) => (
                   <div key={item.id} className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <img src={item.image} alt={item.name} className="w-16 h-16 rounded object-cover border" />
                       <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+                        <p className="font-medium text-sm">{item.name}</p>
+                        <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
                       </div>
                     </div>
-                    <p className="font-semibold">₹{(item.price * item.quantity).toFixed(2)}</p>
+                    <p className="font-semibold text-sm">₹{(item.price * item.quantity).toFixed(2)}</p>
                   </div>
                 ))
               )}
             </div>
 
-            <div className="mt-4 border-t border-gray-200 pt-4">
-              <div className="flex justify-between font-bold text-lg text-gray-900">
+            <div className="mt-6 border-t border-gray-100 pt-4 space-y-2">
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Subtotal</span>
+                <span>₹{subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Tax (8%)</span>
+                <span>₹{tax.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-lg text-gray-900 pt-2 border-t">
                 <span>Total</span>
                 <span>₹{total.toFixed(2)}</span>
               </div>
               <button
-                className={`w-full mt-4 py-3 rounded-lg font-semibold transition-colors ${
-                  isSaved ? "bg-red-600 text-white hover:bg-red-700" : "bg-gray-400 text-gray-200 cursor-not-allowed"
-                }`}
+                className={`w-full mt-4 py-3 rounded-lg font-semibold transition-colors ${isSaved ? "bg-red-600 text-white hover:bg-red-700" : "bg-gray-400 text-gray-200 cursor-not-allowed"}`}
                 disabled={!isSaved}
                 onClick={handleProceedToPayment}
               >

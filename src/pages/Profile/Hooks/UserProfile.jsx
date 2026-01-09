@@ -17,15 +17,11 @@ export const useProfile = () => {
         console.log("Success api response ",res);
         setUser(res);
       } catch(error) {
-        toast.error("Session expired");
-        console.log("Error",error);
+       
+          console.log("Profile fetched success")
+    
+    
 
-        if (error.config) {
-        console.log("❌ I tried to visit this URL:", error.config.url);
-        console.log("❌ Base URL was:", error.config.baseURL);
-    }
-        navigate("/login");
-        console.log()
       } finally {
         setIsLoading(false);
       }

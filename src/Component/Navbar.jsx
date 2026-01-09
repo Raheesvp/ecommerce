@@ -1,5 +1,5 @@
 import React, { useContext, useState, useRef, useEffect } from "react";
-import { Search, User, ShoppingCart, Heart, Menu, X, Trophy } from "lucide-react";
+import { Search, User, ShoppingCart, Heart, Menu, X, Trophy, UserCogIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { CartContext } from "../Context/CartContext";
 import { SearchContext } from "../Context/SearchContext";
@@ -17,12 +17,28 @@ const Navbar = () => {
 
   // Destructure global user and the setter from AuthContext
   const { user, setUser } = useContext(AuthContext);
+  const { isAuthenticated } = useContext(AuthContext)
 
   const mobileMenuRef = useRef(null);
   const navigate = useNavigate();
 
 
   const searchTimeout = useRef(null);
+
+  const handleProfileClick = () => {
+  if (isAuthenticated) {
+    // If logged in, go to profile
+    navigate("/profile"); 
+  } else {
+    // If not logged in, show error toast
+    toast.error("Please log in to view your profile", {
+      position: "top-right",
+      autoClose: 3000,
+    });
+    // Optional: redirect them to login page instead
+    navigate("/login");
+  }
+};
 
   
 
@@ -225,10 +241,10 @@ const Navbar = () => {
               {/* ✅ ENHANCED PROFILE SECTION */}
               {user && (
                 <div className="hidden lg:block relative ml-2">
-                  <button
-                    onClick={() => handleNavigate("/profile")}
-                    className="flex items-center space-x-2 p-1 pr-3 text-gray-300 hover:text-white transition-all duration-300 rounded-full hover:bg-gray-800/60 group border border-gray-700/30"
-                  >
+               <button
+          onClick={handleProfileClick}
+         className="flex items-center space-x-2 p-1 pr-3 text-gray-300 hover:text-white transition-all duration-300 rounded-full hover:bg-gray-800/60 group border border-gray-700/30"
+>
                     <div className="relative">
                       {/* Check for valid image URL and ignore placeholder strings */}
                       {user.profileImageUrl && 

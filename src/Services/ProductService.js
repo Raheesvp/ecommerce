@@ -16,20 +16,7 @@ export const productService = {
     return response.data;
   },
 
-  createProduct :async (data) =>{
-    const response = await api.post(`/products`,data);
-    return response.data;
-  },
 
-  updateProduct :async (id,data)=>{
-    const response = await api.put(`/products/${id}`,data);
-    return response.data;
-  },
-  
-  removeProduct :async (id)=>{
-    const response = await api.delete(`/products/${id}`);
-    return response.data;
-  },
   getProductByFilter :async(params) =>{
     const response = await api.get("/products/Filtered-Products",{ params});
       return response.data;
@@ -45,10 +32,7 @@ export const productService = {
       throw error;
     }
   },
-  getProductDetails :async (id)=>{
-    const res = await api.get(`/products/${id}`);
-    return res.data.data;
-  },
+
 
   getById:async (id) =>{
     const res = await api.get(`/products/${id}`);

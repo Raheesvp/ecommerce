@@ -182,7 +182,7 @@ function ConfirmationPage() {
                   Shop More
                 </button>
                 <button 
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate('/orders')}
                   className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 py-3 rounded-lg font-semibold transition flex items-center justify-center"
                 >
                   <Home className="w-4 h-4 mr-2" />
