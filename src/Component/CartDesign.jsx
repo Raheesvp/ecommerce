@@ -1,5 +1,5 @@
 // src/components/ProductCard.jsx
-import { Heart, ShoppingCart } from "lucide-react";
+import { Heart, ShoppingCart, ArrowRight } from "lucide-react";
 import { useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { CartContext } from "../Context/CartContext";
@@ -11,12 +11,14 @@ function ProductCard({
   isInWishlist,
   viewMode = "grid",
 }) {
-  const { cart, setCartLength } = useContext(CartContext);
+  const { cart = [], setCartLength } = useContext(CartContext);
   const navigate = useNavigate();
 
+  if (!product) return null;
 
+  const { stock = 0 } = product;
 
-  // Default actions if not passed via props
+  // Logic preservation: Default actions if not passed via props
   const defaultOnAction = (p) => {
     console.log(`Action on: ${p.name}`);
     setCartLength((prev) => prev + 1);
@@ -27,127 +29,113 @@ function ProductCard({
   const actualOnAddToWishlist = onAddToWishlist || defaultOnAction;
   const actualIsInWishlist = isInWishlist || defaultIsInWishlist;
 
-
-  console.log("stock ", product.stock);
-
-  console.log(
-  "stock value:", product.stock,
-  "type:", typeof product.stock
-);
-
-
-
-
   const isOutOfStock = typeof product.stock === "number" && product.stock === 0;
 
   const getProductImage = (product) => {
     if (Array.isArray(product.images) && product.images.length > 0) {
       return product.images[0];
     }
-    if (product.image) {
-      return product.image;
-    }
-    if (product.imageUrl) {
-      return product.imageUrl;
-    }
+    if (product.image) return product.image;
+    if (product.imageUrl) return product.imageUrl;
     return "https://via.placeholder.com/300x400";
   };
 
-
-
-
-  // Check if product is already in cart
   const isInCart = cart.some((item) => item.id === product.id);
 
   return (
     <div
-      className={`bg-white rounded-xl overflow-hidden shadow-md transition-all duration-300 group
+      className={`group relative bg-gray-900 border border-white/10 overflow-hidden transition-all duration-500
         ${viewMode === "list"
-          ? "flex items-center gap-6 p-4"
-          : "hover:shadow-xl hover:-translate-y-1 border border-gray-100"
+          ? "flex flex-row items-center gap-6 p-4 rounded-2xl"
+          : "flex flex-col rounded-3xl hover:border-red-500/50 hover:shadow-[0_0_30px_rgba(239,68,68,0.15)] hover:-translate-y-2"
         }`}
     >
-      {/* Image Section */}
+      {/* Image Container */}
       <div
-        className={`relative cursor-pointer overflow-hidden ${viewMode === "grid"
-          ? "aspect-[3/4] w-full "
-          : "h-40 w-40 flex-shrink-0 rounded-lg"
-          } bg-gray-50 transition-all duration-300`}
+        className={`relative cursor-pointer overflow-hidden bg-gray-800 ${
+          viewMode === "grid" 
+            ? "aspect-[4/5] w-full" 
+            : "h-44 w-44 flex-shrink-0 rounded-xl"
+        }`}
         onClick={() => navigate(`/product/${product.id}`)}
       >
         <img
           src={getProductImage(product)}
           alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
         />
+        
+        {/* Overlay Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-        {/* Wishlist Button */}
+        {/* Action Badges */}
+        <div className="absolute top-3 left-3 flex flex-col gap-2">
+          {product.isExtraSale && (
+            <span className="bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-tighter shadow-lg ring-1 ring-white/20">
+              SALE
+            </span>
+          )}
+          {isOutOfStock && (
+            <span className="bg-gray-800/90 backdrop-blur-md text-gray-400 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-tighter border border-white/10">
+              SOLD OUT
+            </span>
+          )}
+        </div>
+
+        {/* Floating Wishlist Button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             actualOnAddToWishlist(product);
           }}
-          className={`absolute top-3 right-3 p-2 rounded-full transition-all duration-300 z-10
+          className={`absolute top-3 right-3 p-2.5 rounded-full transition-all duration-300 z-10 backdrop-blur-md
             ${actualIsInWishlist(product.id)
-              ? "bg-red-500 text-white shadow-md"
-              : "bg-white/80 hover:bg-white text-gray-700 hover:text-red-500 shadow-sm"
-            } hover:scale-110`}
+              ? "bg-red-500 text-white scale-110 shadow-red-500/50 shadow-lg"
+              : "bg-black/40 text-white hover:bg-red-500 border border-white/10"
+            }`}
         >
           <Heart
             size={18}
             className={actualIsInWishlist(product.id) ? "fill-current" : ""}
           />
         </button>
-
-        {/* Sale Badge */}
-        {product.isExtraSale && (
-          <div className="absolute top-0 left-0 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-br-lg uppercase tracking-wider shadow-md">
-            Extra 50% OFF
-          </div>
-        )}
       </div>
 
-      {/* Details Section */}
-      <div
-        className={`pt-2 pb-4 flex flex-col items-center ${viewMode === "list" ? "flex-1" : "px-2"
-          }`}
-      >
-        {/* Product Name */}
+      {/* Content Section */}
+      <div className={`flex flex-col p-5 ${viewMode === "list" ? "flex-1 justify-center" : "items-start"}`}>
+        {/* Player/Category Tag */}
+        {product.player && (
+          <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-1 opacity-80">
+            {product.player}
+          </span>
+        )}
+
+        {/* Product Title */}
         <h3
-          className="font-semibold text-gray-900 text-center mt-2 mb-1 text-sm uppercase tracking-wide cursor-pointer hover:text-blue-700 transition-colors line-clamp-2"
+          className="text-white font-bold text-lg leading-tight mb-2 line-clamp-2 cursor-pointer group-hover:text-red-400 transition-colors"
           onClick={() => navigate(`/product/${product.id}`)}
         >
           {product.name}
         </h3>
 
-    
-
-
-        {/* Optional Player or Team */}
-        {product.player && (
-          <span className="text-xs text-gray-500 mb-1">{product.player}</span>
-        )}
-
-        {/* Price Section */}
-        <div className="text-center mb-3">
-          <div className="flex items-center justify-center gap-2">
-            <span className="text-lg font-bold text-red-600">
-              ₹{product.price}
+        {/* Price Area */}
+        <div className="flex items-baseline gap-2 mb-5">
+          <span className="text-xl font-black text-white italic">
+            ₹{product.price}
+          </span>
+          {product.originalPrice && (
+            <span className="text-sm text-gray-500 line-through decoration-red-500/50">
+              ₹{product.originalPrice}
             </span>
-            {product.originalPrice && (
-              <span className="text-sm text-gray-400 line-through">
-                ₹{product.originalPrice}
-              </span>
-            )}
-          </div>
+          )}
           {product.discount && (
-            <span className="text-xs font-semibold text-red-600 block mt-1">
+            <span className="ml-auto text-[10px] bg-red-500/10 text-red-500 border border-red-500/20 px-2 py-0.5 rounded-full font-bold">
               {product.discount} OFF
             </span>
           )}
         </div>
 
-        {/* Add to Cart / Go to Cart Button */}
+        {/* Cart Button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -158,27 +146,26 @@ function ProductCard({
             }
           }}
           disabled={isOutOfStock}
-          className={`
-    w-full text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2
-    text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg
-    transform hover:scale-[1.02]
-
-    ${isOutOfStock
-              ? "bg-gray-400 cursor-not-allowed"
+          className={`w-full group/btn relative overflow-hidden px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-3 transition-all duration-300
+            ${isOutOfStock
+              ? "bg-gray-800 text-gray-600 cursor-not-allowed border border-white/5"
               : isInCart
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-blue-600 hover:bg-blue-700"}
-  `}
+                ? "bg-white text-black hover:bg-gray-200"
+                : "bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/20"
+            }`}
         >
-          <ShoppingCart size={16} />
-          {isOutOfStock
-            ? "Out of Stock"
-            : isInCart
-              ? "Go to Cart"
-              : "Add to Cart"}
+          {isInCart ? (
+            <>
+              <span>Go to Cart</span>
+              <ArrowRight size={16} className="transition-transform group-hover/btn:translate-x-1" />
+            </>
+          ) : (
+            <>
+              <ShoppingCart size={16} className={isOutOfStock ? "opacity-20" : ""} />
+              <span>{isOutOfStock ? "Out of Stock" : "Add to Cart"}</span>
+            </>
+          )}
         </button>
-
-
       </div>
     </div>
   );

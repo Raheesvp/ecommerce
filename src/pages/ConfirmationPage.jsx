@@ -1,24 +1,22 @@
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { CheckCircle, ShoppingBag, Truck, Home, ArrowLeft } from "lucide-react";
+import { CheckCircle, ShoppingBag, Truck, Home, ArrowRight, Package, Calendar, MapPin, ReceiptText } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import api from "../Api/AxiosInstance"; // Ensure this path matches your Axios setup
+import api from "../Api/AxiosInstance";
 import { toast } from "react-toastify";
 
 function ConfirmationPage() {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const { id } = useParams(); // To handle /confirmation/:id if you add it to App.jsx
+  const { id } = useParams();
   
   const [order, setOrder] = useState(state?.order || null);
   const [loading, setLoading] = useState(!state?.order && !!id);
 
-  // Persistence: Fetch order from backend if state is lost on refresh
   useEffect(() => {
     if (!order && id) {
       const fetchOrderDetails = async () => {
         try {
           const response = await api.get(`/orders/${id}`);
-          // Adjust based on your ApiResponse structure (e.g., response.data.data)
           setOrder(response.data.data || response.data);
         } catch (err) {
           console.error("Error fetching order:", err);
@@ -31,30 +29,35 @@ function ConfirmationPage() {
     }
   }, [id, order]);
 
-  // CALCULATION LOGIC: Calculate based on items to ensure consistency
   const subtotal = order?.items?.reduce((sum, item) => sum + item.price * item.quantity, 0) || 0;
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
-        <p className="text-xl animate-pulse">Loading order details...</p>
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm font-black uppercase tracking-widest animate-pulse">Retrieving Armory Data...</p>
+        </div>
       </div>
     );
   }
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
-        <div className="text-center text-white p-8">
-          <h2 className="text-2xl font-bold mb-4">No Order Found</h2>
-          <p className="text-gray-400 mb-6">It seems you arrived here without completing an order.</p>
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
+        <div className="text-center max-w-md bg-white/5 border border-white/10 p-12 rounded-[2.5rem] backdrop-blur-xl">
+          <div className="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/5">
+            <Package size={40} className="text-gray-700" />
+          </div>
+          <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white mb-4">No Order Found</h2>
+          <p className="text-gray-500 mb-8 font-medium">It looks like this mission was aborted. Head back to the shop to gear up.</p>
           <button 
-            onClick={() => navigate('/')}
-            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition"
+            onClick={() => navigate('/products')}
+            className="w-full bg-red-600 hover:bg-red-700 text-white py-4 rounded-xl font-black italic uppercase tracking-widest transition shadow-xl shadow-red-900/20 active:scale-95"
           >
-            Return to Home
+            Return to Products
           </button>
         </div>
       </div>
@@ -62,84 +65,88 @@ function ConfirmationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 pb-10 px-4 pt-24">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-[#0a0a0a] text-white pt-28 pb-20 px-4 font-sans">
+      <div className="max-w-6xl mx-auto">
         
-        {/* Step Indicator */}
-        <div className="flex justify-center mb-12">
-          <div className="flex items-center space-x-4">
-            {[
-              { step: 1, label: "Cart", active: true },
-              { step: 2, label: "Shipping", active: true },
-              { step: 3, label: "Payment", active: true },
-              { step: 4, label: "Confirmation", active: true, current: true },
-            ].map((s, index) => (
-              <React.Fragment key={s.step}>
+        {/* Step Indicator - All Complete Style */}
+        <div className="flex justify-center mb-16">
+          <div className="flex items-center gap-3 md:gap-6">
+            {["Cart", "Shipping", "Payment", "Confirm"].map((label, index) => (
+              <React.Fragment key={label}>
                 <div className="flex flex-col items-center">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
-                      s.active ? "bg-red-600 text-white" : "bg-gray-700 text-gray-400 border border-gray-600"
-                    } ${s.current ? "ring-2 ring-red-300 ring-offset-2 ring-offset-gray-900" : ""}`}
-                  >
-                    {s.current ? <CheckCircle className="w-5 h-5" /> : s.step}
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black bg-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.4)] rotate-3">
+                    <CheckCircle size={18} />
                   </div>
-                  <span className={`text-xs mt-2 ${s.active ? "text-red-600 font-semibold" : "text-gray-500"}`}>
-                    {s.label}
+                  <span className="text-[10px] mt-3 font-black uppercase tracking-widest text-red-500">
+                    {label}
                   </span>
                 </div>
-                {index < 3 && <div className="h-0.5 w-16 bg-gray-700 mt-3" />}
+                {index < 3 && <div className="h-[2px] w-6 md:w-12 bg-red-600/50 mt-[-18px]" />}
               </React.Fragment>
             ))}
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           
-          <div className="lg:col-span-2 space-y-6">
-            {/* Success Card */}
-            <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-              <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="w-10 h-10 text-white" />
+          <div className="lg:col-span-2 space-y-8">
+            {/* Success Hero Card */}
+            <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 md:p-12 text-center backdrop-blur-xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent"></div>
+              <div className="w-24 h-24 bg-green-500/10 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-green-500/20 rotate-6 shadow-[0_0_40px_rgba(34,197,94,0.1)]">
+                <CheckCircle className="w-12 h-12 text-green-500" />
               </div>
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">Order Confirmed!</h1>
-              <p className="text-gray-600 mb-6">Thank you for your purchase. Your order has been successfully placed.</p>
+              <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter mb-4">
+                Order <span className="text-red-600">Locked In</span>
+              </h1>
+              <p className="text-gray-400 font-medium max-w-md mx-auto mb-10 leading-relaxed">
+                Mission accomplished. Your professional gear is being prepped for dispatch. A confirmation has been sent to your email.
+              </p>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600">Order ID</p>
-                  <p className="font-bold text-gray-800">#{order.orderId || order.id}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="bg-black/40 p-5 rounded-2xl border border-white/5">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1 flex items-center justify-center gap-2">
+                    <ReceiptText size={12} /> Order ID
+                  </p>
+                  <p className="font-black italic text-lg text-white">#{order.orderId || order.id}</p>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600">Total Amount</p>
-                  {/* Using the consistent total calculation */}
-                  <p className="font-bold text-green-600">₹{total.toFixed(2)}</p>
+                <div className="bg-black/40 p-5 rounded-2xl border border-white/5">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1 flex items-center justify-center gap-2">
+                    <Calendar size={12} /> Status
+                  </p>
+                  <p className="font-black italic text-lg text-green-500 uppercase">Confirmed</p>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600">Payment Method</p>
-                  <p className="font-bold text-gray-800">{order.paymentMethod || "Online"}</p>
+                <div className="bg-black/40 p-5 rounded-2xl border border-white/5">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1 flex items-center justify-center gap-2">
+                    <Truck size={12} /> Delivery
+                  </p>
+                  <p className="font-black italic text-lg text-white">3-5 Days</p>
                 </div>
               </div>
             </div>
 
-            {/* Ordered Items */}
-            <div className="bg-white rounded-2xl shadow-xl p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                <ShoppingBag className="w-5 h-5 mr-2 text-red-600" />
-                Ordered Items
+            {/* Item Manifest */}
+            <div className="bg-white/5 border border-white/5 rounded-[2.5rem] p-8">
+              <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-8 flex items-center gap-3">
+                <ShoppingBag className="text-red-600" />
+                Order <span className="text-red-600">Manifest</span>
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 {order.items?.map((item) => (
-                  <div key={item.id} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <img 
-                      src={item.image || "https://via.placeholder.com/100"} 
-                      alt={item.name} 
-                      className="w-16 h-16 object-cover rounded-lg mr-4"
-                    />
+                  <div key={item.id} className="flex items-center gap-6 p-4 bg-black/40 rounded-2xl border border-white/5 group hover:border-red-500/30 transition-all duration-300">
+                    <div className="w-20 h-20 bg-gray-900 rounded-xl overflow-hidden flex-shrink-0 border border-white/5">
+                      <img 
+                        src={item.image || "https://via.placeholder.com/100"} 
+                        alt={item.name} 
+                        className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                      />
+                    </div>
                     <div className="flex-1">
-                      <p className="text-sm font-bold text-gray-800">{item.name}</p>
-                      <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
-                      <p className="text-sm font-bold text-red-600">₹{(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="text-sm font-black uppercase tracking-tight text-white">{item.name}</p>
+                      <p className="text-xs text-gray-500 font-bold uppercase mt-1 tracking-widest">Qty: {item.quantity}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-black italic text-white">₹{(item.price * item.quantity).toFixed(0)}</p>
                     </div>
                   </div>
                 ))}
@@ -147,52 +154,67 @@ function ConfirmationPage() {
             </div>
           </div>
 
-          {/* Sidebar Summary */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-xl p-6 sticky top-24">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Summary</h2>
+          {/* Logistics & Summary Sidebar */}
+          <div className="lg:col-span-1 space-y-6">
+            <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 backdrop-blur-xl sticky top-28">
+              <h2 className="text-xl font-black italic uppercase tracking-tighter mb-6 border-b border-white/5 pb-4 text-red-600">Final Summary</h2>
               
-              <div className="space-y-3 mb-6">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span className="text-gray-800">₹{subtotal.toFixed(2)}</span>
+              <div className="space-y-4 mb-8">
+                <div className="flex justify-between text-gray-400 font-bold uppercase tracking-tighter text-[10px]">
+                  <span>Subtotal</span>
+                  <span className="text-white italic font-medium">₹{subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Tax (8%)</span>
-                  <span className="text-gray-800">₹{tax.toFixed(2)}</span>
+                <div className="flex justify-between text-gray-400 font-bold uppercase tracking-tighter text-[10px]">
+                  <span>GST (8%)</span>
+                  <span className="text-white italic font-medium">₹{tax.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Shipping</span>
-                  <span className="text-green-600 font-medium">FREE</span>
+                <div className="flex justify-between text-gray-400 font-bold uppercase tracking-tighter text-[10px]">
+                  <span>Logistics</span>
+                  <span className="text-green-500 italic font-medium">FREE</span>
                 </div>
-                <div className="border-t pt-3">
-                  <div className="flex justify-between font-bold text-lg">
-                    <span className="text-gray-800">Total</span>
-                    <span className="text-red-600">₹{total.toFixed(2)}</span>
-                  </div>
+                <div className="flex justify-between items-end pt-4 border-t border-white/5">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-red-600">Total Charged</span>
+                  <span className="text-4xl font-black italic text-white tracking-tighter">₹{total.toFixed(2)}</span>
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-4 pt-4">
                 <button 
                   onClick={() => navigate('/products')}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold transition flex items-center justify-center"
+                  className="w-full bg-red-600 hover:bg-red-700 text-white font-black italic uppercase tracking-[0.2em] py-5 rounded-2xl transition-all shadow-xl shadow-red-900/20 active:scale-95 flex items-center justify-center gap-3"
                 >
-                  <ShoppingBag className="w-4 h-4 mr-2" />
-                  Shop More
+                  Continue Shopping <ArrowRight size={18} />
                 </button>
                 <button 
                   onClick={() => navigate('/orders')}
-                  className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 py-3 rounded-lg font-semibold transition flex items-center justify-center"
+                  className="w-full bg-white/5 hover:bg-white/10 text-white font-black italic uppercase tracking-[0.2em] py-5 rounded-2xl transition-all border border-white/10 flex items-center justify-center gap-3"
                 >
-                  <Home className="w-4 h-4 mr-2" />
-                  Home
+                  View My Orders
                 </button>
               </div>
+
+              {order.shippingAddress && (
+                <div className="mt-8 pt-6 border-t border-white/5">
+                  <div className="flex items-center gap-2 mb-3 text-gray-500">
+                    <MapPin size={14} className="text-red-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Shipping Destination</span>
+                  </div>
+                  <p className="text-[11px] text-gray-400 font-medium leading-relaxed uppercase tracking-tighter">
+                    {order.shippingAddress.ReceiverName}<br />
+                    {order.shippingAddress.ShippingAddress}<br />
+                    {order.shippingAddress.City}, {order.shippingAddress.PinNumber}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      <style jsx="true">{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </div>
   );
 }

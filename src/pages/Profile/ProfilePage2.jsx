@@ -23,15 +23,15 @@ const ProfilePage2 = () => {
   const [activeTab, setActiveTab] = useState("profile");
   const [isEditing, setIsEditing] = useState(false);
 
-  useEffect(() => {
-    // If we aren't loading and there is no user, redirect to login
-    if (!user) {
-      // Toaster.err("Login Required")
-      toast.error("login needed");
+  // useEffect(() => {
+  //   // If we aren't loading and there is no user, redirect to login
+  //   if (!user) {
+  //     // Toaster.err("Login Required")
+  //     toast.error("login needed");
   
-      navigate("/login"); // Adjust this path to your login route
-    }
-  }, [ navigate]);
+  //     navigate("/login"); // Adjust this path to your login route
+  //   }
+  // }, [ navigate]);
 
  
 

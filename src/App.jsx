@@ -21,6 +21,11 @@ import AdminLayout from "./Component/Admin2/AdminLayout";
 import AdminDashboard from "./Component/Admin2/AdminDashboard";
 import ViewUsers from "./Component/Admin2/ViewUsers";
 import ResetPasswordPage from "./pages/ResetPassword";
+import ManageCategories from "./Component/Admin2/AdminCategory";
+import FeaturedProducts from "./pages/HomePage/Featured";
+import Newsletter from "./pages/HomePage/NewsLetterSignup";
+import RecentlyViewedPage from "./pages/HomePage/RecentlyViewed";
+import TrendingLeagues from "./pages/HomePage/TrendingLeague";
 
 
 // Lazy loaded pages
@@ -62,6 +67,12 @@ function App() {
         <Route element={<MainLayout/>}>
           
             <Route path="/" element={<Home />} />
+
+            <Route path="/featured" element={<FeaturedProducts/>}/>
+            <Route path="/newsletter" element={<Newsletter/>}/>
+            <Route path="/viewed" element={<RecentlyViewedPage/>}/>
+            <Route path="/trending" element={<TrendingLeagues/>}/>
+          
   
                   <Route path="/products" element={<Product />} />
                   <Route path="/product/:id" element={<ProductDetails />} />
@@ -98,6 +109,7 @@ function App() {
     <Route path="AddProduct" element={<AddProduct />} />
     <Route path="EditProduct/:id" element={<EditProduct />} />
     <Route path="OrderDetails/:id" element={<OrderDetails />} />
+    <Route path="Category" element={<ManageCategories/>}/>
   </Route>
 </Route>
 
@@ -113,6 +125,7 @@ function App() {
                   />
                   <Route path="*" element={<Navigate to="/404" replace />} />
                 </Routes>
+                {/* <ChatBot/> */}
               </OrderProvider>
             </CartProvider>
           </WishlistProvider>

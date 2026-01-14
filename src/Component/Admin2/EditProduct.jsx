@@ -84,6 +84,7 @@ const EditProduct = () => {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+        console.log("File selected ",file.name)
       setImageFile(file);
       setPreview(URL.createObjectURL(file));
     }

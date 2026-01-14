@@ -1,6 +1,20 @@
 import React, { useContext, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ShoppingCart, Star, Heart, Shield, Truck, RotateCcw, Award, ArrowRight } from "lucide-react";
+import { 
+  ShoppingCart, 
+  Star, 
+  Heart, 
+  Shield, 
+  Truck, 
+  RotateCcw, 
+  Award, 
+  ArrowRight, 
+  ChevronLeft, 
+  ChevronRight,
+  ShieldCheck,
+  Zap,
+  Info
+} from "lucide-react";
 import { CartContext } from "../Context/CartContext";
 import { WishlistContext } from "../Context/WishlistContext";
 import ProductCard from "../Component/CartDesign";
@@ -9,309 +23,311 @@ import { toast } from "react-toastify";
 import { AuthContext } from "../Context/AuthContext";
 
 function ProductDetails() {
-  const [product, setProduct] = useState(null);
-  const [relatedProducts, setRelatedProducts] = useState([]);
-  const [isWishlisted, setIsWishlisted] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [quantity, setQuantity] = useState(1);
-  const [isHovering, setIsHovering] = useState(false);
-  const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
+  const [product, setProduct] = useState(null);
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(0);
+  const [quantity, setQuantity] = useState(1);
+  const [isHovering, setIsHovering] = useState(false);
+  const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
 
-  const { addToCart, updateQuantity, cart } = useContext(CartContext);
-  const { addToWishlist, wishlist } = useContext(WishlistContext);
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
+  const { addToCart, cart } = useContext(CartContext);
+  const { addToWishlist, wishlist } = useContext(WishlistContext);
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
 
-const itemsIncart = cart.find((item)=>item.id ===product?.id)
+  const itemsIncart = cart.find((item) => item.id === product?.id);
 
-  // 🧩 Wishlist toggle
-  const handleWishlist = () => {
-    addToWishlist(product);
-    setIsWishlisted(!isWishlisted);
-  };
-
-  // 🧩 Zoom functionality
-  const handleMouseMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setZoomPosition({ x, y });
-  };
-
-  const handleMouseEnter = () => setIsHovering(true);
-  const handleMouseLeave = () => setIsHovering(false);
-
-  const isInWishlist = (prodId) =>
-    wishlist ? wishlist.some((item) => item.id === prodId) : false;
-
-  // 🧩 Fetch product + related products
-  useEffect(() => {
-    const loadProductPage = async () => {
-      try {
-        const [productData, relatedData] = await Promise.all([
-          productService.getById(id),
-          productService.getRelatedProducts(id),
-        ]);
-
-        setProduct(productData);
-        setRelatedProducts(relatedData);
-
-        window.scrollTo(0, 0);
-        setSelectedImage(0);
-        setQuantity(1);
-      } catch (err) {
-        console.error("Error loading product details", err);
-        toast.error("Could not load product");
-      }
-    };
-
-    loadProductPage();
-  }, [id]);
-
-  // ✅ SOLVED: Navigate to Shipping Page instead of calling API directly here
-const handleBuyNow = () => {
-  // 1. Security Check
-  if (!user) {
-    toast.warn("Please login to proceed with the purchase");
-    navigate("/login");
-    return;
-  }
-
-  // 2. Prepare the specific item data
-  const checkoutItem = {
-    productId: product.id,
-    name: product.name,
-    price: product.price,
-    quantity: quantity, // Uses the current local quantity state
-    image: productImages[0],
-    totalPrice: product.price * quantity
+  // Logic: Wishlist toggle
+  const handleWishlist = () => {
+    addToWishlist(product);
+    setIsWishlisted(!isWishlisted);
   };
 
-  // 3. Navigate and pass the object
-  // We use 'state' so this data isn't visible in the URL bar
-  navigate("/shipping", { state: { buyNowItem: checkoutItem } });
-};
+  // Logic: Zoom functionality
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomPosition({ x, y });
+  };
 
-//   const handleQuantityChange = (change) => {
-//   setQuantity((prev) => {
-//     const newQty = prev + change;
-    
-//     // 1. Lower bound check
-//     if (newQty < 1) return 1;
+  const handleMouseEnter = () => setIsHovering(true);
+  const handleMouseLeave = () => setIsHovering(false);
 
-//     // 2. Upper bound (Stock) check
-//     if (newQty > product.stock) {
-//       toast.error(`Only ${product.stock} items available in stock`);
-//       return prev; // Don't increase
-//     }
+  const isInWishlist = (prodId) =>
+    wishlist ? wishlist.some((item) => item.id === prodId) : false;
 
-//     return newQty;
-//   });
+  // Logic: Fetch product + related products
+  useEffect(() => {
+    const loadProductPage = async () => {
+      try {
+        const [productData, relatedData] = await Promise.all([
+          productService.getById(id),
+          productService.getRelatedProducts(id),
+        ]);
 
-//   // Optional: Sync with cart if product already exists there
-//   const itemInCart = cart.find((item) => item.id === product?.id);
-//   if (itemInCart) {
-//     updateQuantity(product.id, change);
-//   }
-// };
+        setProduct(productData);
+        setRelatedProducts(relatedData);
 
-  if (!product) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-xl text-gray-400">Loading Product...</p>
-        </div>
-      </div>
-    );
-  }
+        window.scrollTo(0, 0);
+        setSelectedImage(0);
+        setQuantity(1);
+      } catch (err) {
+        console.error("Error loading product details", err);
+        toast.error("Could not load product");
+      }
+    };
 
-  const productImages = Array.isArray(product.images) 
-    ? product.images 
-    : [product.image || "https://via.placeholder.com/600x600"];
+    loadProductPage();
+  }, [id]);
 
-  return (
-    <div className="w-full bg-gradient-to-br from-gray-900 to-gray-800 pb-10 px-4 text-white">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mt-10">
-          
-          {/* 🖼️ Image Section */}
-          <div className="space-y-4">
-            <div className="relative group">
-              <div className="bg-white rounded-3xl shadow-lg p-8 overflow-hidden">
-                <img
-                  src={productImages[selectedImage]}
-                  alt={product.name}
-                  className="w-full h-96 object-contain transition-transform duration-300 group-hover:scale-105"
-                  onMouseMove={handleMouseMove}
-                  onMouseEnter={handleMouseEnter}
-                  onMouseLeave={handleMouseLeave}
-                  style={{ cursor: isHovering ? "zoom-in" : "default" }}
-                />
+  // Logic: Buy Now flow
+  const handleBuyNow = () => {
+    if (!user) {
+      toast.warn("Please login to proceed with the purchase");
+      navigate("/login");
+      return;
+    }
+    const checkoutItem = {
+      productId: product.id,
+      name: product.name,
+      price: product.price,
+      quantity: quantity,
+      image: productImages[0],
+      totalPrice: product.price * quantity
+    };
+    navigate("/shipping", { state: { buyNowItem: checkoutItem } });
+  };
 
-                {isHovering && (
-                  <div
-                    className="absolute top-0 left-full ml-4 w-96 h-96 border-4 border-white shadow-2xl rounded-3xl overflow-hidden pointer-events-none z-50 bg-white"
-                    style={{
-                      backgroundImage: `url(${productImages[selectedImage]})`,
-                      backgroundSize: "300%",
-                      backgroundPosition: `${zoomPosition.x}% ${zoomPosition.y}%`,
-                      backgroundRepeat: "no-repeat",
-                    }}
-                  />
-                )}
+  // Logic: View History tracking
+  useEffect(() => {
+    if (product && product.id) {
+      const savedIds = JSON.parse(localStorage.getItem("wolf_history_ids")) || [];
+      const filteredIds = savedIds.filter(id => id !== product.id);
+      const updatedIds = [product.id, ...filteredIds].slice(0, 10);
+      localStorage.setItem("wolf_history_ids", JSON.stringify(updatedIds));
+    }
+  }, [product]);
 
-                <button
-                  onClick={handleWishlist}
-                  className="absolute top-6 right-6 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:shadow-xl transition-all duration-200"
-                >
-                  <Heart
-                    size={20}
-                    className={isInWishlist(product.id) ? "fill-red-500 text-red-500" : "text-gray-600"}
-                  />
-                </button>
-              </div>
-            </div>
+  if (!product) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0a0a0a]">
+        <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-gray-500 font-black uppercase tracking-widest text-xs">Syncing Specifications...</p>
+      </div>
+    );
+  }
 
-            <div className="flex space-x-3 overflow-x-auto scrollbar-hide">
-              {productImages.map((image, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={`flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 ${
-                    selectedImage === index ? "border-blue-500 shadow-lg" : "border-transparent"
-                  }`}
-                >
-                  <img src={image} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          </div>
+  const productImages = Array.isArray(product.images) 
+    ? product.images 
+    : [product.image || "https://via.placeholder.com/600x600"];
 
-          {/* 🧾 Product Information */}
-          <div className="space-y-6">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full">✓ In Stock</span>
-                <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full">Fast Delivery</span>
-              </div>
-              <h1 className="text-4xl font-bold leading-tight">{product.name}</h1>
-            </div>
-
-            <div className="flex items-center gap-1">
-              {Array.from({ length: 5 }, (_, i) => (
-                <Star key={i} size={20} className={i < (product.rating || 4) ? "fill-yellow-400 text-yellow-400" : "text-gray-600"} />
-              ))}
-            </div>
-
-            <div className="flex items-baseline gap-3">
-              <span className="text-4xl font-bold">₹{product.price}</span>
-              <span className="text-xl text-gray-500 line-through">₹{Math.floor(product.price * 1.3)}</span>
-            </div>
-
-            <div className="pt-4 border-t border-gray-700">
-              <p className="text-gray-300 leading-relaxed">{product.description || "No description available."}</p>
-            </div>
-
-{/*             <div className="flex items-center gap-4">
-              <span className="font-medium">Quantity:</span>
-              <div className="flex items-center border border-gray-600 rounded-full">
-                <button onClick={() => handleQuantityChange(-1)} className="w-10 h-10 flex items-center justify-center hover:bg-gray-700 rounded-l-full">-</button>
-                <span className="w-12 text-center">{quantity}</span>
-                <button onClick={() => handleQuantityChange(1)} className="w-10 h-10 flex items-center justify-center hover:bg-gray-700 rounded-r-full">+</button>
-              </div>
-              <span className="ml-4 font-semibold text-lg">Total: ₹{(product.price * quantity).toFixed(2)}</span>
-            </div> */}
-
-            <div className="space-y-3 pt-4">
-             <button
-                onClick={itemsIncart ? () => navigate("/cartpage") : () => addToCart(product, quantity)}
-                disabled={product.stock <= 0}
-                className={`w-full py-4 rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 transition-all shadow-lg 
-                  ${itemsIncart 
-                    ? "bg-green-600 hover:bg-green-700 text-white" 
-                    : "bg-blue-600 hover:bg-blue-700 text-white"} 
-                  ${product.stock <= 0 && "bg-gray-600 cursor-not-allowed"}`}
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white pt-24 pb-12 font-sans selection:bg-red-500/30">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Main Product Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+          
+          {/* 🖼️ Image Gallery Section (LHS) */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="relative group bg-white/5 border border-white/10 rounded-[2.5rem] overflow-hidden backdrop-blur-xl">
+              <div 
+                className="relative aspect-square flex items-center justify-center p-8 overflow-hidden cursor-crosshair"
+                onMouseMove={handleMouseMove}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
               >
-                {itemsIncart ? (
-                  <>Go to Cart <ArrowRight size={24} /></>
-                ) : (
-                  <>
-                    <ShoppingCart size={24} /> 
-                    {product.stock <= 0 ? "Out of Stock" : "Add to Cart"}
-                  </>
+                <img
+                  src={productImages[selectedImage]}
+                  alt={product.name}
+                  className={`w-full h-full object-contain transition-transform duration-500 ${isHovering ? 'scale-110 opacity-0' : 'scale-100 opacity-100'}`}
+                />
+
+                {/* Glass Lens Zoom Effect */}
+                {isHovering && (
+                  <div
+                    className="absolute inset-0 z-10 pointer-events-none"
+                    style={{
+                      backgroundImage: `url(${productImages[selectedImage]})`,
+                      backgroundSize: "250%",
+                      backgroundPosition: `${zoomPosition.x}% ${zoomPosition.y}%`,
+                      backgroundRepeat: "no-repeat",
+                    }}
+                  />
                 )}
-              </button>
-{/*               <button
-                onClick={handleBuyNow}
-                className="w-full bg-white text-gray-900 py-4 rounded-2xl font-semibold text-lg hover:bg-gray-100 transition-all"
-              >
-                Buy Now
-              </button> */}
-            </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-6 border-t border-gray-700">
-              {[
-                { icon: <Truck size={20} />, title: "Free Shipping", desc: "On orders over ₹500", color: "text-blue-400" },
-                { icon: <RotateCcw size={20} />, title: "Easy Returns", desc: "30-day policy", color: "text-green-400" },
-                { icon: <Shield size={20} />, title: "Secure Payment", desc: "100% encrypted", color: "text-purple-400" },
-                { icon: <Award size={20} />, title: "Quality Assured", desc: "Premium materials", color: "text-yellow-400" },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className={`${item.color}`}>{item.icon}</div>
-                  <div>
-                    <p className="font-medium text-sm">{item.title}</p>
-                    <p className="text-xs text-gray-400">{item.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+                {/* Floating Badges */}
+                <div className="absolute top-8 left-8 flex flex-col gap-2">
+                   <span className="bg-red-600 text-white text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-tighter shadow-lg">PRO GRADE</span>
+                   {product.stock > 0 && (
+                     <span className="bg-green-500/10 text-green-500 border border-green-500/20 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-tighter backdrop-blur-md">IN STOCK</span>
+                   )}
+                </div>
 
-        {/* 🧩 Related Products Section */}
-        {relatedProducts.length > 0 && (
-          <div className="mt-16 border-t border-gray-700 pt-10">
-            <h2 className="text-2xl font-bold mb-6">Related Products</h2>
-            <div className="relative">
-              <div className="px-8">
-                <div id="relatedScroll" className="flex gap-4 overflow-x-auto scroll-smooth scrollbar-hide">
-                  {relatedProducts.map((item) => (
-                    <div key={item.id} className="flex-shrink-0 w-64">
-                      <ProductCard
-                        product={item}
-                        onAddToCart={addToCart}
-                        onAddToWishlist={addToWishlist}
-                        isInWishlist={isInWishlist}
-                        viewMode="grid"
-                        onClick={() => navigate(`/product/${item.id}`)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <button
-                onClick={() => document.getElementById("relatedScroll").scrollBy({ left: -300, behavior: "smooth" })}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white text-gray-900 w-10 h-10 flex items-center justify-center rounded-full shadow-xl"
-              >
-                &#8592;
-              </button>
-              <button
-                onClick={() => document.getElementById("relatedScroll").scrollBy({ left: 300, behavior: "smooth" })}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white text-gray-900 w-10 h-10 flex items-center justify-center rounded-full shadow-xl"
-              >
-                &#8594;
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+                <button
+                  onClick={handleWishlist}
+                  className={`absolute top-8 right-8 w-12 h-12 rounded-full backdrop-blur-md border transition-all duration-300 flex items-center justify-center shadow-2xl ${
+                    isInWishlist(product.id) 
+                    ? "bg-red-600 border-red-600 text-white scale-110" 
+                    : "bg-black/40 border-white/10 text-white hover:bg-white hover:text-black"
+                  }`}
+                >
+                  <Heart size={20} className={isInWishlist(product.id) ? "fill-current" : ""} />
+                </button>
+              </div>
+            </div>
+
+            {/* Thumbnail Navigation */}
+            <div className="flex gap-4 overflow-x-auto no-scrollbar py-2">
+              {productImages.map((image, index) => (
+                <button
+                  key={index}
+                  onClick={() => setSelectedImage(index)}
+                  className={`flex-shrink-0 w-24 h-24 rounded-2xl overflow-hidden border-2 transition-all duration-300 bg-white/5 p-2 ${
+                    selectedImage === index ? "border-red-600 scale-105 shadow-lg shadow-red-900/20" : "border-white/5 opacity-50 hover:opacity-100"
+                  }`}
+                >
+                  <img src={image} alt="" className="w-full h-full object-contain" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 🧾 Product Details Section (RHS) */}
+          <div className="lg:col-span-5 space-y-8 lg:sticky lg:top-28 h-fit">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-red-500">
+                <Zap size={16} fill="currentColor" />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em]">Wolf Strategic Gear</span>
+              </div>
+              
+              <h1 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter leading-none">
+                {product.name}
+              </h1>
+
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1 bg-white/5 border border-white/10 px-3 py-1 rounded-full">
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <Star key={i} size={14} className={i < (product.rating || 4) ? "fill-yellow-400 text-yellow-400" : "text-gray-700"} />
+                  ))}
+                  <span className="text-[10px] font-bold ml-2 text-gray-400">4.8 / 5.0</span>
+                </div>
+                <div className="h-4 w-[1px] bg-white/10"></div>
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Model ID: {product.id.toString().slice(-6)}</span>
+              </div>
+            </div>
+
+            {/* Pricing Panel */}
+            <div className="bg-white/5 border border-white/10 rounded-[2rem] p-8 backdrop-blur-xl">
+              <div className="flex items-baseline gap-4 mb-8">
+                <span className="text-5xl font-black italic tracking-tighter">₹{product.price}</span>
+                <span className="text-xl text-gray-500 line-through decoration-red-500/50">₹{Math.floor(product.price * 1.3)}</span>
+                <span className="ml-auto bg-green-500/10 text-green-500 text-[10px] font-black px-3 py-1 rounded-md">SAVE 30%</span>
+              </div>
+
+              <p className="text-gray-400 text-sm leading-relaxed mb-10 font-medium">
+                {product.description || "High-performance equipment optimized for tactical speed and durability. Engineered for the professional athlete who demands the kinetic advantage."}
+              </p>
+
+              <div className="space-y-4">
+                <button
+                  onClick={itemsIncart ? () => navigate("/CartPage") : () => addToCart(product, quantity)}
+                  disabled={product.stock <= 0}
+                  className={`w-full group relative overflow-hidden py-5 rounded-2xl font-black italic uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all duration-300 shadow-2xl ${
+                    itemsIncart 
+                    ? "bg-white text-black hover:bg-gray-200" 
+                    : "bg-red-600 text-white hover:bg-red-700 shadow-red-900/20"
+                  } ${product.stock <= 0 && "bg-gray-800 text-gray-500 cursor-not-allowed border border-white/5"}`}
+                >
+                  {itemsIncart ? (
+                    <>GO TO BAG <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" /></>
+                  ) : (
+                    <>
+                      <ShoppingCart size={20} className={product.stock <= 0 ? "opacity-20" : ""} /> 
+                      {product.stock <= 0 ? "OUT OF STOCK" : "EQUIP TO BAG"}
+                    </>
+                  )}
+                </button>
+
+                {/* <button
+                  onClick={handleBuyNow}
+                  className="w-full bg-white/5 border border-white/10 text-white py-5 rounded-2xl font-black italic uppercase tracking-[0.2em] hover:bg-white/10 transition-all active:scale-95"
+                >
+                  Tactical Buy Now
+                </button> */}
+              </div>
+            </div>
+
+            {/* Feature Pills */}
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { icon: <Truck size={16} />, title: "Free Deployment", desc: "Above ₹500", color: "text-blue-500" },
+                { icon: <RotateCcw size={16} />, title: "Return Protocol", desc: "30-Day Window", color: "text-green-500" },
+                { icon: <ShieldCheck size={16} />, title: "Secure Checkout", desc: "SSL Encrypted", color: "text-purple-500" },
+                { icon: <Award size={16} />, title: "Wolf Quality", desc: "Authorized Hub", color: "text-yellow-500" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-3 bg-white/5 p-4 rounded-2xl border border-white/5">
+                  <div className={`${item.color}`}>{item.icon}</div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-tight text-white">{item.title}</p>
+                    <p className="text-[8px] text-gray-500 font-bold uppercase">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 🧩 Related Products Section */}
+        {relatedProducts.length > 0 && (
+          <div className="mt-24 pt-16 border-t border-white/5">
+            <div className="flex items-center justify-between mb-10">
+              <div>
+                <h2 className="text-3xl font-black italic uppercase tracking-tighter">Recommended <span className="text-red-600">Loadout</span></h2>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">Supplementary gear for your journey</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => document.getElementById("relatedScroll").scrollBy({ left: -300, behavior: "smooth" })}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-red-600 transition-colors"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <button
+                  onClick={() => document.getElementById("relatedScroll").scrollBy({ left: 300, behavior: "smooth" })}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-red-600 transition-colors"
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div id="relatedScroll" className="flex gap-6 overflow-x-auto scroll-smooth no-scrollbar pb-6">
+              {relatedProducts.map((item) => (
+                <div key={item.id} className="flex-shrink-0 w-72">
+                  <ProductCard
+                    product={item}
+                    onAddToCart={addToCart}
+                    onAddToWishlist={addToWishlist}
+                    isInWishlist={isInWishlist}
+                    viewMode="grid"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <style jsx="true">{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+    </div>
+  );
 }
 
 export default ProductDetails;
-
-
-

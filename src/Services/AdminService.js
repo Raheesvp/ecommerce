@@ -16,8 +16,18 @@ export const adminService = {
         const response = await api.delete(`/admin/${id}`);
         return response.data;
     },
+
+    getArchivedProducts: async () => {
+    const response = await api.get('/products/archived-inventory');
+    return response.data;
+},
+
+restoreProduct: async (id) => {
+    const response = await api.post(`/products/restore/${id}`);
+    return response.data;
+},
     toggleBlockStatus :async (id)=>{
-        const response = await api.put(`/admin/${id}/block-status`);
+        const response = await api.put(`/admin/block-status/${id}`);
         return response.data;
     },
     getDeletedUsers :async ()=>{
@@ -67,7 +77,7 @@ export const adminService = {
 },
 
     deleteProduct :async(id)=>{
-        const response = await api.delete(`/admin/${id}-Delete-Admin`);
+        const response = await api.delete(`/products/delete-product/${id}`);
         return response.data;
     },
 
@@ -98,7 +108,7 @@ export const adminService = {
   deleteCategory: async (id) => {
     const response = await api.delete(`/admin/categories/${id}`);
     return response.data;
-  },
+  }
 
 
 

@@ -4,17 +4,15 @@ import { wishlistService } from "../Services/WishlistService";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 
+// ✅ CRITICAL: This must be a named export
 export const WishlistContext = createContext();
 
 export const WishlistProvider = ({ children }) => {
   const { user } = useContext(AuthContext);
   const [wishlist, setWishlist] = useState([]);
-
   const navigate = useNavigate();
 
-
   const wishlistLength = wishlist.length;
-
 
   useEffect(() => {
     const loadWishlist = async () => {
@@ -22,19 +20,15 @@ export const WishlistProvider = ({ children }) => {
         setWishlist([]);
         return;
       }
-
       try {
-
         const res = await wishlistService.getWishlist();
         setWishlist(res.data || []);
       } catch (err) {
         console.error("Error loading wishlist:", err);
       }
     };
-
     loadWishlist();
   }, [user]);
-
 
   const addToWishlist = async (product) => {
     if (!user) {
@@ -43,38 +37,34 @@ export const WishlistProvider = ({ children }) => {
       return;
     }
 
+    const isAlreadyInWishlist = wishlist.find(
+      (item) => item.productId === product.id || item.id === product.id
+    );
 
-    const isAlreadyInWishlist = wishlist.find((item) => item.productId === product.id || item.id === product.id);
+    // Optimistic UI Update
     if (isAlreadyInWishlist) {
       setWishlist((prev) => prev.filter((item) => (item.productId || item.id) !== product.id));
     } else {
       setWishlist((prev) => [...prev, product]);
     }
+
     try {
-
       const res = await wishlistService.toggleWishlist(product.id);
-
-      toast.success(res.message);
-
-
+      toast.success(res.message || "Wishlist updated");
     } catch (err) {
       console.error("Sync failed", err);
       toast.error("Failed to update wishlist");
-
     }
   };
 
   const removeFromWishlist = async (productId) => {
-    await addToWishlist({ id: productId }); 
+    await addToWishlist({ id: productId });
   };
-
 
   const clearWishlist = async () => {
     if (!user) return;
-
     try {
       setWishlist([]);
-
       await wishlistService.clearWishlist();
       toast.success("Wishlist cleared");
     } catch (err) {
