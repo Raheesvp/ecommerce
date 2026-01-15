@@ -198,7 +198,7 @@ const AdminDashboard = () => {
           {/* Top Selling List */}
           <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100">
             <h3 className="text-lg font-black italic uppercase mb-6 flex items-center">
-              <Zap className="mr-2 text-yellow-500" size={20} /> High Velocity Gear
+              <Zap className="mr-2 text-yellow-500" size={20} /> Hot Selling Products
             </h3>
             <div className="space-y-5">
               {stats.topSellingProducts?.map((item, idx) => (

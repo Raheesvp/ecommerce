@@ -9,6 +9,7 @@ export const WishlistContext = createContext();
 
 export const WishlistProvider = ({ children }) => {
   const { user } = useContext(AuthContext);
+
   const [wishlist, setWishlist] = useState([]);
   const navigate = useNavigate();
 

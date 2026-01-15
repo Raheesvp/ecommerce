@@ -118,7 +118,7 @@ const ManageCategories = () => {
 
   const handleDelete = async (id) => {
     const result = await Swal.fire({
-      title: "DECOMMISSION CATEGORY?",
+      title: "DELETE CATEGORY?",
       text: "Warning: This affects all items linked to this manifest!",
       icon: "warning",
       showCancelButton: true,
@@ -290,7 +290,7 @@ const ManageCategories = () => {
                         <div className="flex justify-between items-center mt-2">
                           <span className="text-blue-600 font-black text-lg italic">₹{product.price.toLocaleString()}</span>
                           <span className={`text-[9px] px-3 py-1 rounded-lg font-black uppercase tracking-widest ${product.stock > 0 ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
-                            {product.stock > 0 ? `STOCK: ${product.stock}` : 'DEPLETED'}
+                            {product.stock > 0 ? `STOCK: ${product.stock}` : 'OUT OF STOCK'}
                           </span>
                         </div>
                       </div>
@@ -304,11 +304,11 @@ const ManageCategories = () => {
                 )}
               </div>
               
-              <div className="p-6 bg-white border-t border-gray-50">
+              {/* <div className="p-6 bg-white border-t border-gray-50">
                  <button className="w-full py-3 border-2 border-dashed border-gray-200 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-all">
                     Generate Department Report
                  </button>
-              </div>
+              </div> */}
             </div>
           </div>
         )}

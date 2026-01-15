@@ -1,4 +1,5 @@
 import axios from "axios";
+import { toast } from "react-toastify"; // Assuming you use this for alerts
 
 /* ------------------------------------------------------------------
    Shared state (module-level, persists across requests)
@@ -40,7 +41,6 @@ const refreshClient = axios.create({
 ------------------------------------------------------------------ */
 api.interceptors.request.use(
   (config) => {
-    // Do NOT attach Authorization header for refresh endpoint
     if (!config.url.includes("/Auth/Refresh-Token")) {
       const token = localStorage.getItem("accessToken");
       if (token) {
@@ -59,6 +59,22 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    /* --------------------------------------------------------------
+       NEW: CHECK FOR BLOCKED USER STATUS
+       If the backend returns 401/403 and a message about being blocked,
+       log them out immediately without trying to refresh.
+    -------------------------------------------------------------- */
+    const errorMessage = error.response?.data?.message?.toLowerCase() || "";
+    const isUserBlocked = errorMessage.includes("block") || errorMessage.includes("suspended");
+
+    if (error.response && (error.response.status === 401 || error.response.status === 403) && isUserBlocked) {
+      localStorage.clear();
+      // Use toast or alert to inform the user
+      console.error("Account Access Denied: User is blocked.");
+      window.location.replace("/login");
+      return Promise.reject(error);
+    }
 
     // If no response or not 401 → propagate error
     if (!error.response || error.response.status !== 401) {
@@ -115,12 +131,15 @@ api.interceptors.response.use(
       return api(originalRequest);
 
     } catch (refreshError) {
-      // Refresh failed → logout
-      processQueue(refreshError, null);
+      // If refresh fails because the user was blocked during the refresh call
+      const refreshErrorMsg = refreshError.response?.data?.message?.toLowerCase() || "";
+      if (refreshErrorMsg.includes("block") || refreshErrorMsg.includes("suspended")) {
+         console.error("Session terminated: Account blocked.");
+      }
 
+      processQueue(refreshError, null);
       localStorage.clear();
       window.location.replace("/login");
-
       return Promise.reject(refreshError);
 
     } finally {

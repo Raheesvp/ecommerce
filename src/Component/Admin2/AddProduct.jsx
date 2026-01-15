@@ -3,13 +3,17 @@ import { adminService } from "../../Services/AdminService";
 import { toast } from "react-toastify";
 import { 
   Package, Upload, IndianRupee, Tag, List, 
-  Info, Save, Loader2, PlusCircle, LayoutGrid 
+  Info, Save, Loader2, PlusCircle, LayoutGrid, 
+  Star,
+  Zap,
+  ShieldCheck
 } from "lucide-react";
 
 const AddProduct = () => {
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]); 
   const [typedCategoryName, setTypedCategoryName] = useState(""); 
+  const [hoverRating,setHoverRating] = useState(0);
   const [product, setProduct] = useState({
     name: "",
     description: "",
@@ -17,6 +21,8 @@ const AddProduct = () => {
     originalPrice: "",
     stock: "",
     categoryId: "",
+    rating:0,
+    featured:false
   });
   const [imageFile, setImageFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -79,8 +85,8 @@ const AddProduct = () => {
       formData.append("OriginalPrice", product.originalPrice); 
       formData.append("Category", typedCategoryName);
       formData.append("Offer", "No Offer"); 
-      formData.append("Rating", 0);
-      formData.append("Featured", false);
+      formData.append("Rating", product.rating);
+      formData.append("Featured", product.featured);
 
       if (imageFile) {
         formData.append("Images", imageFile); 
@@ -89,7 +95,7 @@ const AddProduct = () => {
       await adminService.createProduct(formData);
       toast.success("Product added to inventory!");
 
-      setProduct({ name: "", description: "", price: "", originalPrice: "", stock: "", categoryId: "" });
+      setProduct({ name: "", description: "", price: "", originalPrice: "", stock: "", categoryId: "" ,rating:"",featured:false});
       setTypedCategoryName("");
       setImageFile(null);
       setPreview(null);
@@ -137,6 +143,7 @@ const AddProduct = () => {
                     </div>
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Upload High-Res Asset</p>
                   </div>
+                  
                 )}
                 <input 
                   type="file" 
@@ -147,9 +154,62 @@ const AddProduct = () => {
                 />
             </div>
           </div>
+                <div className="bg-white p-6 rounded-[2rem] shadow-xl shadow-blue-900/5 border border-gray-100">
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 flex items-center">
+              <Star size={14} className="mr-2 text-yellow-500" /> Performance Rating
+            </h3>
+            <div className="flex items-center justify-center space-x-2 bg-gray-50 p-4 rounded-2xl">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setProduct({ ...product, rating: star })}
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  className="transition-transform active:scale-90"
+                >
+                  <Star
+                    size={28}
+                    fill={(hoverRating || product.rating) >= star ? "#EAB308" : "none"}
+                    className={`transition-colors ${(hoverRating || product.rating) >= star ? "text-yellow-500" : "text-gray-300"}`}
+                  />
+                </button>
+              ))}
+            </div>
 
-        
+              <div className="bg-white p-6 rounded-[2rem] shadow-xl shadow-blue-900/5 border border-gray-100">
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 flex items-center">
+              <Zap size={14} className="mr-2 text-blue-600" /> Priority Status
+            </h3>
+            <div className="flex p-1 bg-gray-100 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setProduct({ ...product, featured: false })}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${!product.featured ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                Standard
+              </button>
+              <button
+                type="button"
+                onClick={() => setProduct({ ...product, featured: true })}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${product.featured ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                <ShieldCheck size={14} /> Elite / Featured
+              </button>
+            </div>
+            <p className="text-[9px] text-gray-400 mt-3 px-2 text-center font-bold uppercase tracking-tighter leading-tight">
+              Featured products appear in the priority storefront carousel.
+            </p>
+          </div>
+    
+
+            <p className="text-center mt-2 text-[10px] font-bold text-gray-400 uppercase italic">
+              Level {product.rating || 0} Professional Grade
+            </p>
+          </div>
         </div>
+        
+        
 
         {/* Right Column: Detailed Specs */}
         <div className="lg:col-span-8 space-y-6">
@@ -252,6 +312,7 @@ const AddProduct = () => {
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 flex items-center">
                         <List size={12} className="mr-2 text-blue-600" /> Initial Stock
                     </label>
+                    
                     <input
                         type="number"
                         name="stock"

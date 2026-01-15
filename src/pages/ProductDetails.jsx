@@ -13,8 +13,15 @@ import {
   ChevronRight,
   ShieldCheck,
   Zap,
-  Info
+  Info,
+  User,
+  MessageSquare
 } from "lucide-react";
+
+// ✅ Lightbox Imports
+import Lightbox from "yet-another-react-lightbox";
+import "yet-another-react-lightbox/styles.css";
+
 import { CartContext } from "../Context/CartContext";
 import { WishlistContext } from "../Context/WishlistContext";
 import ProductCard from "../Component/CartDesign";
@@ -25,11 +32,16 @@ import { AuthContext } from "../Context/AuthContext";
 function ProductDetails() {
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isHovering, setIsHovering] = useState(false);
   const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
+
+  // ✅ Lightbox State
+  const [isOpen, setIsOpen] = useState(false);
+  const [slides, setSlides] = useState([]);
 
   const { addToCart, cart } = useContext(CartContext);
   const { addToWishlist, wishlist } = useContext(WishlistContext);
@@ -37,15 +49,22 @@ function ProductDetails() {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
 
+  const BASE_URL = "https://localhost:57401"; // Backend URL for images
+
   const itemsIncart = cart.find((item) => item.id === product?.id);
 
-  // Logic: Wishlist toggle
+  // Logic: Open Lightbox with selected images
+  const handleImageClick = (imageUrls, index) => {
+    const formattedSlides = imageUrls.map(url => ({ src: `${BASE_URL}${url}` }));
+    setSlides(formattedSlides);
+    setIsOpen(true);
+  };
+
   const handleWishlist = () => {
     addToWishlist(product);
     setIsWishlisted(!isWishlisted);
   };
 
-  // Logic: Zoom functionality
   const handleMouseMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -59,49 +78,31 @@ function ProductDetails() {
   const isInWishlist = (prodId) =>
     wishlist ? wishlist.some((item) => item.id === prodId) : false;
 
-  // Logic: Fetch product + related products
   useEffect(() => {
     const loadProductPage = async () => {
       try {
-        const [productData, relatedData] = await Promise.all([
+        const [productData, relatedData, reviewData] = await Promise.all([
           productService.getById(id),
           productService.getRelatedProducts(id),
+          productService.getReviewsByProductId(id)
         ]);
 
         setProduct(productData);
         setRelatedProducts(relatedData);
+        setReviews(reviewData || []);
 
         window.scrollTo(0, 0);
         setSelectedImage(0);
         setQuantity(1);
       } catch (err) {
         console.error("Error loading product details", err);
-        toast.error("Could not load product");
+        toast.error("Could not load product specifications");
       }
     };
 
     loadProductPage();
   }, [id]);
 
-  // Logic: Buy Now flow
-  const handleBuyNow = () => {
-    if (!user) {
-      toast.warn("Please login to proceed with the purchase");
-      navigate("/login");
-      return;
-    }
-    const checkoutItem = {
-      productId: product.id,
-      name: product.name,
-      price: product.price,
-      quantity: quantity,
-      image: productImages[0],
-      totalPrice: product.price * quantity
-    };
-    navigate("/shipping", { state: { buyNowItem: checkoutItem } });
-  };
-
-  // Logic: View History tracking
   useEffect(() => {
     if (product && product.id) {
       const savedIds = JSON.parse(localStorage.getItem("wolf_history_ids")) || [];
@@ -146,7 +147,6 @@ function ProductDetails() {
                   className={`w-full h-full object-contain transition-transform duration-500 ${isHovering ? 'scale-110 opacity-0' : 'scale-100 opacity-100'}`}
                 />
 
-                {/* Glass Lens Zoom Effect */}
                 {isHovering && (
                   <div
                     className="absolute inset-0 z-10 pointer-events-none"
@@ -159,7 +159,6 @@ function ProductDetails() {
                   />
                 )}
 
-                {/* Floating Badges */}
                 <div className="absolute top-8 left-8 flex flex-col gap-2">
                    <span className="bg-red-600 text-white text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-tighter shadow-lg">PRO GRADE</span>
                    {product.stock > 0 && (
@@ -180,7 +179,6 @@ function ProductDetails() {
               </div>
             </div>
 
-            {/* Thumbnail Navigation */}
             <div className="flex gap-4 overflow-x-auto no-scrollbar py-2">
               {productImages.map((image, index) => (
                 <button
@@ -213,14 +211,15 @@ function ProductDetails() {
                   {Array.from({ length: 5 }, (_, i) => (
                     <Star key={i} size={14} className={i < (product.rating || 4) ? "fill-yellow-400 text-yellow-400" : "text-gray-700"} />
                   ))}
-                  <span className="text-[10px] font-bold ml-2 text-gray-400">4.8 / 5.0</span>
+                  <span className="text-[10px] font-bold ml-2 text-gray-400">
+                    {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : "5.0"} / 5.0
+                  </span>
                 </div>
                 <div className="h-4 w-[1px] bg-white/10"></div>
                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Model ID: {product.id.toString().slice(-6)}</span>
               </div>
             </div>
 
-            {/* Pricing Panel */}
             <div className="bg-white/5 border border-white/10 rounded-[2rem] p-8 backdrop-blur-xl">
               <div className="flex items-baseline gap-4 mb-8">
                 <span className="text-5xl font-black italic tracking-tighter">₹{product.price}</span>
@@ -229,7 +228,7 @@ function ProductDetails() {
               </div>
 
               <p className="text-gray-400 text-sm leading-relaxed mb-10 font-medium">
-                {product.description || "High-performance equipment optimized for tactical speed and durability. Engineered for the professional athlete who demands the kinetic advantage."}
+                {product.description || "High-performance equipment optimized for tactical speed and durability."}
               </p>
 
               <div className="space-y-4">
@@ -247,21 +246,13 @@ function ProductDetails() {
                   ) : (
                     <>
                       <ShoppingCart size={20} className={product.stock <= 0 ? "opacity-20" : ""} /> 
-                      {product.stock <= 0 ? "OUT OF STOCK" : "EQUIP TO BAG"}
+                      {product.stock <= 0 ? "OUT OF STOCK" : "ADD TO CART"}
                     </>
                   )}
                 </button>
-
-                {/* <button
-                  onClick={handleBuyNow}
-                  className="w-full bg-white/5 border border-white/10 text-white py-5 rounded-2xl font-black italic uppercase tracking-[0.2em] hover:bg-white/10 transition-all active:scale-95"
-                >
-                  Tactical Buy Now
-                </button> */}
               </div>
             </div>
 
-            {/* Feature Pills */}
             <div className="grid grid-cols-2 gap-3">
               {[
                 { icon: <Truck size={16} />, title: "Free Deployment", desc: "Above ₹500", color: "text-blue-500" },
@@ -278,6 +269,76 @@ function ProductDetails() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* ✅ FIELD REPORTS SECTION (REVIEWS) */}
+        <div className="mt-24 pt-16 border-t border-white/5">
+          <div className="flex items-center gap-4 mb-12">
+            <div className="bg-red-600/10 p-3 rounded-2xl border border-red-600/20">
+              <MessageSquare className="text-red-500" size={24} />
+            </div>
+            <div>
+              <h2 className="text-3xl font-black italic uppercase tracking-tighter">Review <span className="text-red-600">Reports</span></h2>
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">Direct feedback from the front lines</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {reviews.length > 0 ? (
+              reviews.map((rev) => (
+                <div key={rev.id} className="bg-white/5 border border-white/10 p-8 rounded-[2.5rem] backdrop-blur-xl hover:border-red-500/30 transition-all duration-500 group">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-red-600/10 rounded-2xl flex items-center justify-center border border-red-600/20 group-hover:bg-red-600 group-hover:text-white transition-all duration-500">
+                        <User size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-white uppercase tracking-tight">{rev.userName}</h4>
+                        <div className="flex items-center gap-2">
+                           <ShieldCheck size={12} className="text-green-500" />
+                           <span className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">Verified Buyer</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex text-red-600">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={12} fill={i < rev.rating ? "currentColor" : "none"} />
+                        ))}
+                      </div>
+                      <span className="text-[9px] text-gray-600 font-bold uppercase">{new Date(rev.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-gray-400 text-sm leading-relaxed italic mb-6">"{rev.comment}"</p>
+
+                  {/* ✅ User Images Gallery with Lightbox Trigger */}
+                  {rev.imageUrls?.length > 0 && (
+                    <div className="flex flex-wrap gap-3">
+                      {rev.imageUrls.map((img, idx) => (
+                        <div 
+                          key={idx} 
+                          onClick={() => handleImageClick(rev.imageUrls, idx)}
+                          className="w-20 h-20 rounded-2xl overflow-hidden border border-white/10 bg-black/40 p-1 group/img hover:border-red-600 transition-all cursor-zoom-in"
+                        >
+                          <img 
+                            src={`${BASE_URL}${img}`} 
+                            className="w-full h-full object-cover rounded-xl group-hover/img:scale-110 transition-transform duration-500" 
+                            alt="Field Evidence"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full py-20 text-center bg-white/5 border border-dashed border-white/10 rounded-[2.5rem]">
+                <Info className="mx-auto text-gray-700 mb-4" size={32} />
+                <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-xs">No Reviews yet.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -321,6 +382,14 @@ function ProductDetails() {
           </div>
         )}
       </div>
+
+      {/* ✅ LIGHTBOX COMPONENT */}
+      <Lightbox
+        open={isOpen}
+        close={() => setIsOpen(false)}
+        slides={slides}
+        styles={{ container: { backgroundColor: "rgba(0, 0, 0, .95)" } }}
+      />
 
       <style jsx="true">{`
         .no-scrollbar::-webkit-scrollbar { display: none; }

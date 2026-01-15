@@ -210,7 +210,7 @@ function ShippingPage() {
                   : "bg-white text-black hover:bg-red-600 hover:text-white"
                 }`}
               >
-                {isSaved ? "✓ Information Locked" : "Save Shipping Info"}
+                {isSaved ? "✓ Information Saved" : "Save Shipping Info"}
               </button>
             </form>
           </div>

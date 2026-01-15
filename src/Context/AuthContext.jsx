@@ -11,13 +11,16 @@ export const AuthProvider = ({ children }) => {
   // ✅ FIX 1: Initialize user directly from localStorage so it doesn't start as null on refresh
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("user");
-    return savedUser ? JSON.parse(savedUser) : null;
+    return savedUser && savedUser !== "undefined" ? JSON.parse(savedUser) : null;
 
   });
 
   useEffect(() => {
     setRefreshHandler(setIsRefreshing); // Link them here
   }, []);
+
+
+
 
   const [loading, setLoading] = useState(false);
 
@@ -70,7 +73,8 @@ export const AuthProvider = ({ children }) => {
       console.warn("Server Logout Failed,(Clearnig the local data anyway")
     }finally{
 
-      localStorage.removeItem("token");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
       localStorage.removeItem("cart");
 

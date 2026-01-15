@@ -15,8 +15,8 @@ function CartPage() {
 
   const handleClearCart = () => {
     Swal.fire({
-      title: 'Empty Armory?',
-      text: "This will remove all professional gear from your cart.",
+      title: 'Clear Cart?',
+      text: "This will remove all professional items from your cart.",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#dc2626',

@@ -4,6 +4,7 @@ import api from "../Api/AxiosInstance";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { cartService } from "../Services/CartService";
+import { WishlistContext } from "./WishlistContext";
 
 export const CartContext = createContext();
 
@@ -11,6 +12,8 @@ export const CartProvider = ({ children }) => {
   const { user } = useContext(AuthContext);
   const debounceTimer = useRef(null);
 
+  const {setWishlist} = useContext(WishlistContext);
+ 
   const [cart, setCart] = useState(() => {
     const saved = localStorage.getItem("cart");
     return saved ? JSON.parse(saved) : [];
@@ -64,6 +67,9 @@ export const CartProvider = ({ children }) => {
       try {
         await cartService.addToCart(product.id, quantity);
         // toast.success("Added To Cart");
+        if (setWishlist) {
+          setWishlist((prev) => prev.filter((item) => item.id !== product.id));
+        }
         fetchCart();
       } catch (err) {
         toast.error(err.response?.data?.message || "Failed to add item");

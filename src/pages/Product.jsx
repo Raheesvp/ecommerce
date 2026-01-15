@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { Filter, ShoppingBag, X, CheckCircle2, LogIn, UserPlus, ArrowRight, ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
+import { Filter, ShoppingBag, X, CheckCircle2, LogIn, UserPlus, ArrowRight, ChevronLeft, ChevronRight, SlidersHorizontal, Tag } from "lucide-react";
 import { CartContext } from "../Context/CartContext";
 import { WishlistContext } from "../Context/WishlistContext";
 import ProductCard from "../Component/CartDesign"; // Ensure this is the updated ProductCard
@@ -8,11 +8,16 @@ import { productService } from "../Services/ProductService";
 import * as Dialog from "@radix-ui/react-dialog";
 import { AuthContext } from "../Context/AuthContext";
 import { Toaster, toast } from "sonner";
+import { adminService } from "../Services/AdminService";
 
 function Product() {
   const [products, setProducts] = useState([]);
   const [sortOption, setSortOption] = useState("All");
-  const [categoryFilter, setCategoryFilter] = useState("All");
+  
+  // ✅ Categories State
+  const [categories, setCategories] = useState([]);
+  const [categoryFilter, setCategoryFilter] = useState("All"); // Stores 'All' or categoryId
+  
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
@@ -92,28 +97,66 @@ function Product() {
     }
   };
 
+  // ✅ Fetch Categories on Mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        // Fetch categories from your adminService
+        const categoriesData = await adminService.getAllCategories();
+        setCategories(categoriesData.data);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        toast.error("Failed to load categories");
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // ✅ Fetch Products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const sort = mapSortOption(sortOption);
-        const params = {
-          page: currentPage,
-          pageSize: itemsPerPage,
-          sortBy: sort.sortBy,
-          order: sort.order,
-          category: categoryFilter !== "All" ? categoryFilter : undefined,
-        };
-        const res = await productService.getProductByFilter(params);
-        setProducts(res.data.items);
-        setTotalPages(res.data.totalPages);
+        if (categoryFilter !== "All") {
+          // Use Category Specific Endpoint
+          const res = await productService.getProductByCategoryId(categoryFilter);
+          
+          // Normalize the data extraction
+          const list = Array.isArray(res) ? res : (res?.data || []);
+          
+          setProducts(list);
+          setTotalPages(1); // For category-specific results, we show all at once
+        } else {
+          // Use Filtered Endpoint (All)
+          const sort = mapSortOption(sortOption);
+          const params = {
+            page: currentPage,
+            pageSize: itemsPerPage,
+            sortBy: sort.sortBy,
+            order: sort.order,
+          };
+
+          // Get all products with pagination
+          const res = await productService.getProductByFilter(params);
+          
+          // Extract from paged result structure
+          const productList = res.data?.items || res?.items || [];
+          const pages = res.data?.totalPages || res?.totalPages || 1;
+          
+          setProducts(productList);
+          setTotalPages(pages);
+        }
       } catch (err) {
         console.error("Error fetching products", err);
+        toast.error("Failed to load products");
         setProducts([]);
+        setTotalPages(1);
       }
     };
     fetchProducts();
   }, [currentPage, sortOption, categoryFilter]);
 
+  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [sortOption, categoryFilter]);
@@ -123,35 +166,68 @@ function Product() {
       <Toaster expand={true} richColors theme="dark" />
 
       {/* Hero Header Section */}
-      <div className="relative pt-32 pb-12 px-4 border-b border-white/5 bg-gradient-to-b from-red-500/5 to-transparent">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div>
-            <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter">
-              Elite <span className="text-red-600">Gear</span>
-            </h1>
-            <p className="text-gray-500 mt-2 font-medium max-w-md">
-              Professional grade equipment designed for the modern athlete. 
-              Dominate the field with Wolf Athletix.
-            </p>
+      <div className="relative pt-32 pb-8 px-4 border-b border-white/5 bg-gradient-to-b from-red-500/5 to-transparent">
+        <div className="max-w-7xl mx-auto space-y-10">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter leading-none">
+                Elite <span className="text-red-600">Gear</span>
+              </h1>
+              <p className="text-gray-500 mt-2 font-medium max-w-md">
+                Professional grade equipment designed for the modern athlete. 
+              </p>
+            </div>
+            
+            {/* Sort Controls */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2">
+                <SlidersHorizontal size={16} className="text-red-500" />
+                <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Sort</span>
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value)}
+                  className="bg-transparent text-white text-sm font-bold outline-none cursor-pointer focus:text-red-500 transition-colors"
+                >
+                  <option className="bg-gray-900" value="All">All</option>
+                  <option className="bg-gray-900" value="Newest">Newest</option>
+                  <option className="bg-gray-900" value="Price: Low to High">Price: Low to High</option>
+                  <option className="bg-gray-900" value="Price: High to Low">Price: High to Low</option>
+                  <option className="bg-gray-900" value="Top Rated">Top Rated</option>
+                </select>
+              </div>
+            </div>
           </div>
-          
-          {/* Controls */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2">
-              <SlidersHorizontal size={16} className="text-red-500" />
-              <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Sort</span>
-              <select
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value)}
-                className="bg-transparent text-white text-sm font-bold outline-none cursor-pointer focus:text-red-500 transition-colors"
+
+          {/* ✅ Category Filter Navigation */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2 text-gray-500">
+              <Tag size={14} className="text-red-600" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Deployment Sectors</span>
+            </div>
+            <div className="flex overflow-x-auto pb-4 gap-3 no-scrollbar scroll-smooth">
+              <button
+                onClick={() => setCategoryFilter("All")}
+                className={`whitespace-nowrap px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-2 flex-shrink-0 ${
+                  categoryFilter === "All"
+                    ? "bg-red-600 border-red-600 text-white shadow-lg shadow-red-900/20"
+                    : "bg-white/5 border-white/5 text-gray-500 hover:border-white/10"
+                }`}
               >
-                <option className="bg-gray-900">All</option>
-                <option className="bg-gray-900">Featured</option>
-                <option className="bg-gray-900">Newest</option>
-                <option className="bg-gray-900">Price: Low to High</option>
-                <option className="bg-gray-900">Price: High to Low</option>
-                <option className="bg-gray-900">Top Rated</option>
-              </select>
+                All Gear
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setCategoryFilter(cat.id)}
+                  className={`whitespace-nowrap px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-2 flex-shrink-0 ${
+                    categoryFilter === cat.id
+                      ? "bg-red-600 border-red-600 text-white shadow-lg shadow-red-900/20"
+                      : "bg-white/5 border-white/5 text-gray-500 hover:border-white/10 hover:text-white"
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -185,8 +261,8 @@ function Product() {
           </div>
         )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
+        {/* Pagination - Only show when viewing all products (not category filtered) */}
+        {totalPages > 1 && categoryFilter === "All" && (
           <div className="flex justify-center items-center gap-4 mt-16">
             <button 
               disabled={currentPage === 1}
@@ -249,6 +325,16 @@ function Product() {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
+
+      <style jsx="true">{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 }

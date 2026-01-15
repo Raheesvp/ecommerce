@@ -26,6 +26,7 @@ import FeaturedProducts from "./pages/HomePage/Featured";
 import Newsletter from "./pages/HomePage/NewsLetterSignup";
 import RecentlyViewedPage from "./pages/HomePage/RecentlyViewed";
 import TrendingLeagues from "./pages/HomePage/TrendingLeague";
+import ChatBot from "./pages/Chatbot";
 
 
 // Lazy loaded pages

@@ -67,7 +67,6 @@ restoreProduct: async (id) => {
 },
 
    updateProduct: async (id, formData) => {
-    // FIX: Add the headers object here just like in createProduct
     const response = await api.patch(`/products/Update/${id}`, formData, {
         headers: { 
             'Content-Type': 'multipart/form-data' 

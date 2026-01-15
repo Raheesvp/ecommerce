@@ -59,7 +59,35 @@ export const productService = {
       throw error;
     }
     
+  },
+  submitReview: async (formData) => {
+  try {
+   
+    const res = await api.post('/products/submit-review', formData, {
+      headers: {
+   
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Intel Debrief Failed:", error);
+    throw error;
   }
+},
+
+getReviewsByProductId: async (productId) => {
+  try {
+    // Matches [HttpGet("{productId:int}/reviews")] inside ProductController
+    const response = await api.get(`/products/${productId}/reviews`);
+    
+    // We return the data array from your ApiResponse wrapper
+    return response.data.data; 
+  } catch (error) {
+    console.error("Error fetching intelligence reports:", error);
+    throw error;
+  }
+}
 
 
 

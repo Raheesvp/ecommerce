@@ -1,5 +1,5 @@
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { CheckCircle, ShoppingBag, Truck, Home, ArrowRight, Package, Calendar, MapPin, ReceiptText } from "lucide-react";
+import { CheckCircle, ShoppingBag, Truck, Home, ArrowRight, Package, Calendar, MapPin, ReceiptText, X, Download } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import api from "../Api/AxiosInstance";
 import { toast } from "react-toastify";
@@ -8,9 +8,48 @@ function ConfirmationPage() {
   const { state } = useLocation();
   const navigate = useNavigate();
   const { id } = useParams();
-  
+
   const [order, setOrder] = useState(state?.order || null);
   const [loading, setLoading] = useState(!state?.order && !!id);
+  
+  // NEW STATES FOR PDF PREVIEW
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleDownloadInvoice = async () => {
+    setIsGenerating(true);
+    try {
+      const orderId = order.orderId || order.id;
+      
+      const response = await api.get(`/orders/invoice/${orderId}`, {
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      
+      setPdfUrl(url);
+      setShowModal(true);
+      toast.success("Invoice Generated!");
+    } catch (err) {
+      console.error("Download Error:", err);
+      toast.error("Failed to generate PDF. Check if the backend is running.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const triggerDownload = () => {
+    if (!pdfUrl) return;
+    const orderId = order.orderId || order.id;
+    const link = document.createElement('a');
+    link.href = pdfUrl;
+    link.setAttribute('download', `WolfAthletix_Invoice_${orderId}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   useEffect(() => {
     if (!order && id) {
@@ -97,13 +136,26 @@ function ConfirmationPage() {
                 <CheckCircle className="w-12 h-12 text-green-500" />
               </div>
               <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter mb-4">
-                Order <span className="text-red-600">Locked In</span>
+                Order <span className="text-red-600">Success</span>
               </h1>
               <p className="text-gray-400 font-medium max-w-md mx-auto mb-10 leading-relaxed">
                 Mission accomplished. Your professional gear is being prepped for dispatch. A confirmation has been sent to your email.
               </p>
               
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <button 
+                onClick={handleDownloadInvoice}
+                disabled={isGenerating}
+                className="w-full bg-transparent hover:bg-white/5 text-gray-400 hover:text-white font-black italic uppercase tracking-[0.2em] py-4 rounded-2xl transition-all border border-dashed border-white/10 flex items-center justify-center gap-3 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isGenerating ? (
+                  <div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <ReceiptText size={18} className="text-red-600" />
+                )}
+                {isGenerating ? "Processing Armory..." : "View & Download Invoice"}
+              </button>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-8">
                 <div className="bg-black/40 p-5 rounded-2xl border border-white/5">
                   <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1 flex items-center justify-center gap-2">
                     <ReceiptText size={12} /> Order ID
@@ -210,6 +262,48 @@ function ConfirmationPage() {
           </div>
         </div>
       </div>
+
+      {/* PDF PREVIEW MODAL */}
+      {showModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10">
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setShowModal(false)}></div>
+          
+          <div className="relative w-full max-w-5xl h-[90vh] bg-[#111] border border-white/10 rounded-[2rem] overflow-hidden flex flex-col shadow-2xl">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-black/40">
+              <div className="flex items-center gap-3">
+                <ReceiptText className="text-red-600" />
+                <h3 className="font-black italic uppercase tracking-tighter text-xl">
+                  Invoice <span className="text-red-600">Manifest</span>
+                </h3>
+              </div>
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={triggerDownload}
+                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-xl font-black italic uppercase tracking-widest text-xs transition-all flex items-center gap-2"
+                >
+                  <Download size={16} /> Save PDF
+                </button>
+                <button 
+                  onClick={() => setShowModal(false)}
+                  className="text-gray-500 hover:text-white transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            {/* PDF Content */}
+            <div className="flex-1 bg-white/5 p-4">
+              <iframe 
+                src={pdfUrl} 
+                className="w-full h-full rounded-xl border-none shadow-inner bg-white"
+                title="Invoice Preview"
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx="true">{`
         .no-scrollbar::-webkit-scrollbar { display: none; }

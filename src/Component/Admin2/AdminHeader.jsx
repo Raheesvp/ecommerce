@@ -1,60 +1,75 @@
-import React, { useState, useEffect } from "react"; // Added useEffect
+import React, { useState, useEffect } from "react";
 import { 
   Search, Bell, ChevronDown, Menu, X, 
-  User, Settings, LogOut, Globe, Shield, Terminal
+  User, Settings, LogOut, Globe, Shield, Terminal, TrendingUp,
+  Volume2, VolumeX
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
 import Swal from "sweetalert2";
-import * as signalR from "@microsoft/signalr"; 
+import * as signalR from "@microsoft/signalr";
+import { Howl } from "howler";
+
+
+const intelSound = new Howl({
+  src: ["https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3"],
+  volume: 0.6,
+  preload: true
+});
 
 const AdminHeader = ({ sidebarOpen, setSidebarOpen }) => {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]); 
+  const [totalDepartmentAmount, setTotalDepartmentAmount] = useState(0);
+  const [isMuted, setIsMuted] = useState(false); // New: Audio Control
   const navigate = useNavigate();
 
   useEffect(() => {
-    // 3. Establish SignalR Connection
-   const connection = new signalR.HubConnectionBuilder()
-  .withUrl("https://localhost:57401/orderHub", {
-    withCredentials: true
-  })
-  .withAutomaticReconnect()
-  .build();
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
 
-  
-    connection.start()
-      .then(() => {
-        console.log("Connected to Tactical Intel Hub");
-        
-      connection.on("ReceiveOrderNotification", (message, orderId) => {
-  // Move the log INSIDE here so it can access the variables
-  console.log("real time Intel Received:", message, orderId);
-
-  const newNotif = {
-    id: Date.now(),
-    message: message,
-    orderId: orderId,
-    time: new Date().toLocaleTimeString(),
-    isRead: false
-  };
-  
-  setNotifications(prev => [newNotif, ...prev]);
-  
-  toast.info(`INTEL: ${message}`, {
-    position: "top-right",
-    autoClose: 5000,
-    icon: "🔥",
-    theme: "dark"
-  });
-});
-      
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl("https://localhost:57401/orderHub", {
+        accessTokenFactory: () => token,
+        skipNegotiation: false,
+        transport: signalR.HttpTransportType.WebSockets,
       })
-      .catch(err => console.error("Intel Link Failed: ", err));
+      .withAutomaticReconnect()
+      .configureLogging(signalR.LogLevel.Information)
+      .build();
 
-    return () => connection.stop();
-  }, []);
+    // REGISTER NOTIFICATION LISTENER
+    connection.on("ReceiveOrderNotification", (message, orderId) => {
+      console.log("New intel received:", message);
+      
+      const newIntel = {
+        id: Date.now(),
+        message: message,
+        orderId: orderId,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isNew: true
+      };
+
+      setNotifications(prev => [newIntel, ...prev]);
+
+      // Trigger Audio Alert if not muted
+      if (!isMuted) {
+        intelSound.play();
+      }
+    });
+
+    connection.on("UpdateDepartmentTotal", (newAmount) => {
+      setTotalDepartmentAmount(newAmount);
+    });
+
+    connection.start()
+      .then(() => console.log("📡 Command Center Linked to Hub"))
+      .catch(err => console.error("📡 Connection Failed:", err));
+
+    return () => {
+      connection.stop();
+    };
+  }, [isMuted]); // Re-bind listener context if mute state changes
 
   const handleLogout = () => {
     Swal.fire({
@@ -77,7 +92,6 @@ const AdminHeader = ({ sidebarOpen, setSidebarOpen }) => {
       if (result.isConfirmed) {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("user");
-        toast.success("Deployment Terminated");
         navigate("/login");
       }
     });
@@ -109,14 +123,34 @@ const AdminHeader = ({ sidebarOpen, setSidebarOpen }) => {
 
       {/* Right Section */}
       <div className="flex items-center space-x-6">
+        
+        {/* Live Revenue Monitor */}
+        <div className="hidden lg:flex flex-col items-end px-4 py-2 bg-red-50/50 rounded-2xl border border-red-100/50">
+          <span className="text-[9px] font-black text-red-600 uppercase tracking-widest leading-none mb-1 flex items-center gap-1">
+            <TrendingUp size={10} /> Live Revenue
+          </span>
+          <span className="text-sm font-black text-gray-900 tabular-nums">
+            ₹{totalDepartmentAmount.toLocaleString()}
+          </span>
+        </div>
+
+        {/* Audio Controller Toggle */}
+        <button 
+          onClick={() => setIsMuted(!isMuted)}
+          className={`p-3 rounded-xl transition-all ${isMuted ? 'text-gray-400 bg-gray-100' : 'text-red-600 bg-red-50'}`}
+          title={isMuted ? "Unmute Alerts" : "Mute Alerts"}
+        >
+          {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+        </button>
+
         <button 
           onClick={() => window.open('/', '_blank')}
-          className="hidden sm:flex items-center text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-red-600 transition-all bg-gray-50 px-4 py-2 rounded-xl"
+          className="hidden sm:flex items-center text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-red-600 transition-all bg-gray-50 px-4 py-2 rounded-xl border border-transparent hover:border-red-100"
         >
           <Globe size={14} className="mr-2" /> Live Site
         </button>
 
-        {/* Notifications Dropdown */}
+        {/* Notifications Center */}
         <div className="relative">
           <button
             onClick={() => setNotificationsOpen(!notificationsOpen)}
@@ -136,11 +170,19 @@ const AdminHeader = ({ sidebarOpen, setSidebarOpen }) => {
                   <span className="text-xs font-black uppercase text-gray-900 flex items-center">
                     <Terminal size={14} className="mr-2 text-red-600" /> System Intel
                   </span>
-                  <button onClick={() => setNotifications([])} className="text-[10px] font-bold text-red-600 uppercase hover:underline">Flush All</button>
+                  <button 
+                    onClick={() => setNotifications([])} 
+                    className="text-[10px] font-bold text-red-600 uppercase hover:underline"
+                  >
+                    Flush History
+                  </button>
                 </div>
-                <div className="max-h-80 overflow-y-auto px-2">
+                <div className="max-h-80 overflow-y-auto px-2 no-scrollbar">
                   {notifications.length === 0 ? (
-                    <p className="p-8 text-center text-xs text-gray-400 font-bold uppercase tracking-widest">Zero active alerts</p>
+                    <div className="p-12 text-center">
+                      <Shield size={40} className="mx-auto text-gray-100 mb-4" />
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-widest leading-relaxed">System Secure<br/>Zero active alerts</p>
+                    </div>
                   ) : (
                     notifications.map(n => (
                       <div 
@@ -149,10 +191,13 @@ const AdminHeader = ({ sidebarOpen, setSidebarOpen }) => {
                             navigate(`/admin/OrderDetails/${n.orderId}`);
                             setNotificationsOpen(false);
                         }} 
-                        className="mx-2 my-1 px-4 py-4 hover:bg-gray-50 rounded-2xl cursor-pointer transition-all border border-transparent hover:border-gray-100 group"
+                        className="mx-2 my-1 px-4 py-4 hover:bg-red-50 rounded-2xl cursor-pointer transition-all border border-transparent hover:border-red-100 group"
                       >
-                        <p className="text-sm text-gray-900 font-bold uppercase italic tracking-tight group-hover:text-red-600 line-clamp-1">{n.message}</p>
-                        <p className="text-[10px] text-gray-400 font-medium mt-1">ID: #{n.orderId} • {n.time}</p>
+                        <div className="flex justify-between items-start mb-1">
+                          <p className="text-sm text-gray-900 font-black uppercase italic tracking-tight group-hover:text-red-600 transition-colors">#{n.orderId}</p>
+                          <span className="text-[10px] text-gray-400 font-bold">{n.time}</span>
+                        </div>
+                        <p className="text-[11px] text-gray-500 font-bold uppercase tracking-tighter line-clamp-1">{n.message}</p>
                       </div>
                     ))
                   )}
@@ -162,7 +207,7 @@ const AdminHeader = ({ sidebarOpen, setSidebarOpen }) => {
           )}
         </div>
 
-        {/* Profile Dropdown */}
+        {/* User Profile Command */}
         <div className="relative">
           <button
             onClick={() => setProfileOpen(!profileOpen)}
