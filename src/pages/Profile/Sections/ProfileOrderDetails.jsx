@@ -20,7 +20,8 @@ import {
   MessageSquare,
   Image as ImageIcon,
   Upload,
-  User
+  User,
+  RotateCcw // Added for return icon
 } from "lucide-react";
 
 const ProfileOrders = () => {
@@ -61,7 +62,6 @@ const ProfileOrders = () => {
         const ordersArray = Array.isArray(data) ? data : [];
         setOrders(ordersArray);
 
-        // Fetch reviews for all products in these orders to show existing "Field Reports"
         const productIds = [...new Set(ordersArray.flatMap(o => o.orderItems.map(i => i.productId)))];
         productIds.forEach(async (id) => {
            try {
@@ -105,6 +105,53 @@ const ProfileOrders = () => {
         toast.success("Order Cancelled Successfully");
       } catch (err) {
         toast.error(err.response?.data?.message || "Failed to Cancel Order");
+      }
+    }
+  };
+
+  // --- NEW: RETURN HANDLER ---
+  const handleOpenReturnModal = async (orderId, productId, productName) => {
+    const { value: returnValues } = await Swal.fire({
+      title: `<span class="italic uppercase font-black tracking-tighter text-white">Initiate Return</span>`,
+      html:
+        `<div class="flex flex-col gap-4 p-4 text-left overflow-x-hidden">
+          <p class="text-[10px] text-orange-500 font-black uppercase tracking-widest mb-2">Item: ${productName}</p>
+          <label class="text-[9px] font-black uppercase text-gray-500 tracking-widest">1. Reason for Return</label>
+          <select id="swal-return-reason" class="bg-black border border-white/10 text-white p-3 rounded-xl outline-none focus:border-orange-600 text-sm">
+            <option value="Wrong Size">Wrong Size</option>
+            <option value="Damaged Item">Damaged Item</option>
+            <option value="Defective">Defective / Not Working</option>
+            <option value="Quality Issues">Quality Issues</option>
+            <option value="Different from Image">Different from Image</option>
+          </select>
+          <label class="text-[9px] font-black uppercase text-gray-500 tracking-widest mt-2">2. Detailed Explanation</label>
+          <textarea id="swal-return-desc" class="bg-black border border-white/10 text-white p-3 rounded-xl h-32 outline-none focus:border-orange-600 text-sm" placeholder="Describe the issue in detail..."></textarea>
+        </div>`,
+      focusConfirm: false,
+      background: "#0a0a0a",
+      showCancelButton: true,
+      confirmButtonText: 'SUBMIT REQUEST',
+      confirmButtonColor: '#f97316',
+      customClass: { popup: 'rounded-[2.5rem] border border-white/10' },
+      preConfirm: () => {
+        const reason = document.getElementById('swal-return-reason').value;
+        const description = document.getElementById('swal-return-desc').value;
+        if (!description) Swal.showValidationMessage('Description is required for processing');
+        return { reason, description }
+      }
+    });
+
+    if (returnValues) {
+      try {
+        const payload = {
+          productId: productId,
+          reason: returnValues.reason,
+          description: returnValues.description
+        };
+        await orderService.requestReturn(orderId, payload);
+        toast.success("Return Request Logged. Awaiting Admin Review.");
+      } catch (err) {
+        toast.error(err.response?.data?.message || "Return Protocol Failed");
       }
     }
   };
@@ -154,7 +201,6 @@ const ProfileOrders = () => {
         }
         await productService.submitReview(formData);
         toast.success("Operational Report Saved");
-        // Refresh reviews for this product
         const updatedReviews = await productService.getReviewsByProductId(productId);
         setProductReviews(prev => ({ ...prev, [productId]: updatedReviews }));
       } catch (err) {
@@ -257,17 +303,21 @@ const ProfileOrders = () => {
                               <h4 className="text-white font-bold text-lg uppercase tracking-tight">{item.productName}</h4>
                               <p className="text-[10px] font-black text-gray-500 uppercase">Qty: {item.quantity}</p>
                             </div>
-                            <div className="flex items-center gap-4">
+                            <div className="flex flex-wrap items-center justify-end gap-3 min-w-[200px]">
                               {isDelivered && (
-                                <button onClick={() => handleOpenReviewModal(item.productId, item.productName)} className="bg-white/5 hover:bg-red-600 text-white p-3 rounded-xl border border-white/10 transition-all flex items-center gap-2">
-                                  <MessageSquare size={16} /> <span className="text-[9px] font-black uppercase">Add Review</span>
-                                </button>
+                                <>
+                                  <button onClick={() => handleOpenReviewModal(item.productId, item.productName)} className="bg-white/5 hover:bg-red-600 text-white px-3 py-2 rounded-xl border border-white/10 transition-all flex items-center gap-2">
+                                    <MessageSquare size={14} /> <span className="text-[9px] font-black uppercase">Review</span>
+                                  </button>
+                                  <button onClick={() => handleOpenReturnModal(order.id, item.productId, item.productName)} className="bg-white/5 hover:bg-orange-600 text-white px-3 py-2 rounded-xl border border-white/10 transition-all flex items-center gap-2">
+                                    <RotateCcw size={14} /> <span className="text-[9px] font-black uppercase">Return</span>
+                                  </button>
+                                </>
                               )}
-                              <p className="text-xl font-black italic text-white tracking-tighter">₹{item.price * item.quantity}</p>
+                              <p className="text-xl font-black italic text-white tracking-tighter ml-4">₹{item.price * item.quantity}</p>
                             </div>
                           </div>
 
-                          {/* --- REVIEW DETAILS SECTION --- */}
                           {myReview && (
                             <div className="ml-24 bg-white/[0.02] border border-white/5 rounded-2xl p-4 animate-in fade-in slide-in-from-left-2">
                               <div className="flex items-center justify-between mb-3">

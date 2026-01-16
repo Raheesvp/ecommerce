@@ -38,6 +38,19 @@ export const orderService = {
 directBuy :async (paymentData) =>{
   const response = await api.post("/orders/direct-buy",paymentData);
   return response.data;
-}
+},
+
+requestReturn: async (orderId, returnData) => {
+  const response = await api.post(`/orders/${orderId}/return`, returnData);
+  return response.data;
+},
+
+// Fetch all return requests (Admin)
+getAllReturns: async () => {
+
+  const response = await api.get("/orders/returns/all");
+  return response.data;
+},
 
 }
+

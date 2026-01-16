@@ -3,7 +3,8 @@ import { NavLink } from "react-router-dom";
 import { 
   LayoutDashboard, Users, ShoppingCart, 
   Package, PlusSquare, Settings, 
-  Layers, ChevronRight, Activity, Shield
+  Layers, ChevronRight, Activity, Shield,
+  RotateCcw // Added for tactical return icon
 } from "lucide-react";
 import { isAction } from "redux";
 
@@ -22,23 +23,28 @@ const AdminSidebar = ({ sidebarOpen }) => {
     },
     { 
       path: "/admin/ViewProducts", 
-      label: "Inventory Manifest", 
+      label: "Mangage Product", 
       icon: Package 
     },
     { 
       path: "/admin/AddProduct", 
-      label: "Enlist Product", 
+      label: "Add Product", 
       icon: PlusSquare 
     },
     { 
       path: "/admin/ViewOrders", 
-      label: "Logistics", 
+      label: "Orders", 
       icon: ShoppingCart 
     },
     {
       path: "/admin/Category",
       label: "Departments",
       icon: Layers
+    },
+    {
+      path: "/admin/Returns",
+      label :"Return Product",
+      icon: RotateCcw 
     }
   ];
 
@@ -83,7 +89,7 @@ const AdminSidebar = ({ sidebarOpen }) => {
           >
             <item.icon 
               size={20} 
-              strokeWidth={isAction ? 2.5 : 2}
+              strokeWidth={2.5}
               className={`transition-transform duration-300 ${sidebarOpen ? "mr-4" : "mx-auto group-hover:scale-110"}`} 
             />
             

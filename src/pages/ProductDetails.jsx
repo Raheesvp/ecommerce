@@ -347,8 +347,8 @@ function ProductDetails() {
           <div className="mt-24 pt-16 border-t border-white/5">
             <div className="flex items-center justify-between mb-10">
               <div>
-                <h2 className="text-3xl font-black italic uppercase tracking-tighter">Recommended <span className="text-red-600">Loadout</span></h2>
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">Supplementary gear for your journey</p>
+                <h2 className="text-3xl font-black italic uppercase tracking-tighter">Recommended <span className="text-red-600">PRODUCTS</span></h2>
+                {/* <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">ALTERNATE PRODUCTS</p> */}
               </div>
               <div className="flex gap-2">
                 <button

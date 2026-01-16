@@ -27,6 +27,7 @@ import Newsletter from "./pages/HomePage/NewsLetterSignup";
 import RecentlyViewedPage from "./pages/HomePage/RecentlyViewed";
 import TrendingLeagues from "./pages/HomePage/TrendingLeague";
 import ChatBot from "./pages/Chatbot";
+import AdminReturns from "./Component/Admin2/AdminReturns";
 
 
 // Lazy loaded pages
@@ -111,6 +112,7 @@ function App() {
     <Route path="EditProduct/:id" element={<EditProduct />} />
     <Route path="OrderDetails/:id" element={<OrderDetails />} />
     <Route path="Category" element={<ManageCategories/>}/>
+    <Route path="Returns" element={<AdminReturns/>}/>
   </Route>
 </Route>
 
